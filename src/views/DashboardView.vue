@@ -190,10 +190,18 @@
               id="task-subject"
               v-model="currentTask.subjectId" 
               class="form-select"
+              :disabled="!currentTask.projectId || isLoadingSubjects"
             >
-              <option value="null">주제를 선택하세요</option>
+              <option value="null">
+                {{ !currentTask.projectId 
+                  ? '먼저 연간사업을 선택하세요' 
+                  : isLoadingSubjects 
+                    ? '주제 로딩 중...' 
+                    : '주제를 선택하세요' 
+                }}
+              </option>
               <option 
-                v-for="subject in subjects" 
+                v-for="subject in projectSubjects" 
                 :key="subject.id" 
                 :value="subject.id"
               >
@@ -341,7 +349,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { useRouter } from 'vue-router'
 
@@ -421,6 +429,55 @@ const fetchYearlyProjects = async () => {
   } finally {
     isLoadingProjects.value = false
     console.log('확인: API 호출 완료, 로딩 상태:', isLoadingProjects.value)
+  }
+}
+
+// 연간사업별 주제 목록 조회 함수
+const fetchSubjectsByProject = async (projectId) => {
+  if (!projectId) {
+    projectSubjects.value = []
+    return
+  }
+  
+  console.log(`확인: 연간사업 ${projectId}의 주제 목록 조회 시작...`)
+  isLoadingSubjects.value = true
+  
+  try {
+    const apiUrl = `http://localhost:8000/api/v1/category/level1/${projectId}`
+    console.log('확인: 주제 API URL:', apiUrl)
+    
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    
+    console.log('확인: 주제 Response status:', response.status)
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+    
+    const data = await response.json()
+    console.log('확인: 주제 원본 응답 데이터:', data)
+    
+    // API 응답에서 name 필드만 추출하여 표시
+    projectSubjects.value = data
+    console.log('주제 목록 조회 성공:', data)
+    
+  } catch (error) {
+    console.error('주제 목록 조회 실패:', error)
+    console.error('에러 세부정보:', {
+      message: error.message,
+      stack: error.stack
+    })
+    
+    // 에러 시 빈 배열
+    projectSubjects.value = []
+  } finally {
+    isLoadingSubjects.value = false
+    console.log('확인: 주제 API 호출 완료, 로딩 상태:', isLoadingSubjects.value)
   }
 }
 
@@ -527,6 +584,10 @@ const todayTasks = ref({
 const yearlyProjects = ref([])
 const isLoadingProjects = ref(false)
 
+// 주제 목록 (연간사업별로 동적 조회)
+const projectSubjects = ref([])
+const isLoadingSubjects = ref(false)
+
 // 일정바 데이터 (본격 테스트 데이터)
 const scheduleData = ref([
   {
@@ -598,49 +659,14 @@ const subjects = ref([
 // 요일 배열
 const weekdays = ['월', '화', '수', '목', '금', '토', '일']
 
-// 사업 데이터
-const projects = ref([
-  {
-    id: 1,
-    name: '웹사이트 리뉴얼',
-    color: '#FF6B6B',
-    start_date: '2025-07-01',
-    end_date: '2025-07-15',
-    layer: 0
-  },
-  {
-    id: 2,
-    name: '모바일 앱 개발',
-    color: '#4ECDC4',
-    start_date: '2025-07-08',
-    end_date: '2025-07-25',
-    layer: 1
-  },
-  {
-    id: 3,
-    name: '마케팅 캠페인',
-    color: '#45B7D1',
-    start_date: '2025-06-28',
-    end_date: '2025-07-10',
-    layer: 2
-  },
-  {
-    id: 4,
-    name: '데이터 분석',
-    color: '#96CEB4',
-    start_date: '2025-07-12',
-    end_date: '2025-07-30',
-    layer: 3
-  },
-  {
-    id: 5,
-    name: 'UI/UX 디자인',
-    color: '#FFEAA7',
-    start_date: '2025-07-03',
-    end_date: '2025-07-18',
-    layer: 4
-  }
-])
+// 연간사업별 색상 할당을 위한 computed
+const projects = computed(() => {
+  return yearlyProjects.value.map((project, index) => ({
+    id: project.id,
+    name: project.name,
+    color: colors[index % colors.length]
+  }))
+})
 
 // 현재 월 표시
 const currentMonth = computed(() => {
@@ -909,6 +935,17 @@ const selectDate = (day) => {
   selectedDate.value = new Date(day.date)
   currentWeek.value = new Date(day.date)
 }
+
+// 연간사업 선택 변경 감지
+watch(() => currentTask.value?.projectId, (newProjectId, oldProjectId) => {
+  if (newProjectId !== oldProjectId) {
+    // 연간사업이 변경되면 주제 초기화 및 새로운 주제 목록 조회
+    if (currentTask.value) {
+      currentTask.value.subjectId = null
+    }
+    fetchSubjectsByProject(newProjectId)
+  }
+})
 
 // 할일 모달 관련 메서드
 const openTodayTaskModal = (day) => {

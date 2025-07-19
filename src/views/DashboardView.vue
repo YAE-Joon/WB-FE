@@ -81,6 +81,53 @@
             <button @click="nextWeek" class="week-nav">›</button>
           </div>
           
+          <!-- 오늘의 업무 섹션 -->
+          <div class="today-work-section">
+            <div class="today-work-header">
+              <h4>오늘의 업무</h4>
+              <button @click="addTodayWork" class="add-work-btn">+ 업무 추가</button>
+            </div>
+            
+            <!-- 오늘의 업무 테이블 -->
+            <div class="today-work-table">
+              <!-- 테이블 헤더 -->
+              <div class="work-table-header">
+                <div class="work-header-cell">사업명</div>
+                <div class="work-header-cell">업무명</div>
+                <div class="work-header-cell">상태</div>
+                <div class="work-header-cell">시작일</div>
+                <div class="work-header-cell">마감일</div>
+              </div>
+              
+              <!-- 업무 행들 -->
+              <div 
+                v-for="work in todayWorks" 
+                :key="work.id"
+                class="work-row"
+                @click="editTodayWork(work)"
+              >
+                <div class="work-cell">{{ work.projectName }}</div>
+                <div class="work-cell">{{ work.taskName }}</div>
+                <div class="work-cell">
+                  <span 
+                    class="status-badge"
+                    :class="getStatusClass(work.status)"
+                  >
+                    {{ work.status }}
+                  </span>
+                </div>
+                <div class="work-cell">{{ formatDate(work.startDate) }}</div>
+                <div class="work-cell">{{ formatDate(work.deadline) }}</div>
+              </div>
+              
+              <!-- 빈 상태 -->
+              <div v-if="todayWorks.length === 0" class="empty-work">
+                <p>오늘 진행할 업무가 없습니다.</p>
+                <button @click="addTodayWork" class="add-empty-work-btn">첫 업무 추가하기</button>
+              </div>
+            </div>
+          </div>
+          
           <!-- 주간 테이블 -->
           <div class="weekly-table">
             <!-- 요일/날짜 헤더 -->
@@ -94,36 +141,6 @@
               >
                 <div class="day-name">{{ day.dayName }}</div>
                 <div class="day-date">{{ day.dateNum }}</div>
-              </div>
-            </div>
-            
-            <!-- 오늘할일 행 -->
-            <div class="table-row">
-              <div class="row-title">오늘할일</div>
-              <div 
-                v-for="(day, index) in weekDays" 
-                :key="`today-${day.date}`" 
-                class="task-cell today-task-cell"
-                :class="{ 'today': day.isToday }"
-                @click="openTodayTaskModal(day)"
-              >
-                <div class="task-display">
-                  <!-- 할일 태그들 표시 -->
-                  <div v-if="todayTasks[day.date] && todayTasks[day.date].length > 0" class="task-tags">
-                    <div 
-                      v-for="task in todayTasks[day.date]" 
-                      :key="task.id"
-                      class="task-tag"
-                      @click.stop="openTaskEditModal(day, task)"
-                    >
-                      {{ task.name }}
-                    </div>
-                  </div>
-                  <!-- 빈 상태일 때 플레이스홀더 -->
-                  <div v-else class="task-placeholder">
-                    할일을 입력하세요
-                  </div>
-                </div>
               </div>
             </div>
             
@@ -154,25 +171,25 @@
       </section>
     </main>
 
-    <!-- 할일 모달 -->
-    <div v-if="showTaskModal" class="modal-overlay" @click="closeTaskModal">
+    <!-- 오늘의 업무 모달 -->
+    <div v-if="showWorkModal" class="modal-overlay" @click="closeWorkModal">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
-          <h3>{{ isEditMode ? '할일 수정' : '새 할일 추가' }}</h3>
-          <button @click="closeTaskModal" class="close-btn">×</button>
+          <h3>{{ isWorkEditMode ? '업무 수정' : '새 업무 추가' }}</h3>
+          <button @click="closeWorkModal" class="close-btn">×</button>
         </div>
         
         <div class="modal-body">
           <div class="form-group">
-            <label for="task-project">연간 사업</label>
+            <label for="work-project">사업명</label>
             <select 
-              id="task-project"
-              v-model="currentTask.projectId" 
+              id="work-project"
+              v-model="currentWork.projectId" 
               class="form-select"
               :disabled="isLoadingProjects"
             >
               <option value="null">
-                {{ isLoadingProjects ? '로딩 중...' : '연간 사업을 선택하세요' }}
+                {{ isLoadingProjects ? '로딩 중...' : '사업을 선택하세요' }}
               </option>
               <option 
                 v-for="project in yearlyProjects" 
@@ -185,80 +202,56 @@
           </div>
           
           <div class="form-group">
-            <label for="task-subject">주제</label>
-            <select 
-              id="task-subject"
-              v-model="currentTask.subjectId" 
-              class="form-select"
-              :disabled="!currentTask.projectId || isLoadingSubjects"
+            <label for="work-task">업무명</label>
+            <input 
+              id="work-task"
+              type="text" 
+              v-model="currentWork.taskName" 
+              placeholder="업무명을 입력하세요"
+              class="form-input"
             >
-              <option value="null">
-                {{ !currentTask.projectId 
-                  ? '먼저 연간사업을 선택하세요' 
-                  : isLoadingSubjects 
-                    ? '주제 로딩 중...' 
-                    : '주제를 선택하세요' 
-                }}
-              </option>
-              <option 
-                v-for="subject in projectSubjects" 
-                :key="subject.id" 
-                :value="subject.id"
-              >
-                {{ subject.name }}
-              </option>
+          </div>
+          
+          <div class="form-group">
+            <label for="work-status">상태</label>
+            <select 
+              id="work-status"
+              v-model="currentWork.status" 
+              class="form-select"
+            >
+              <option value="예정">예정</option>
+              <option value="진행중">진행중</option>
+              <option value="완료">완료</option>
+              <option value="보류">보류</option>
             </select>
           </div>
           
           <div class="form-group">
-            <label for="task-name">할 일</label>
+            <label for="work-start">시작일</label>
             <input 
-              id="task-name"
-              type="text" 
-              v-model="currentTask.name" 
-              placeholder="할일 이름을 입력하세요"
-              class="form-input"
-            >
-          </div>
-          
-          <div class="form-group">
-            <label for="task-content">세부 내용</label>
-            <textarea 
-              id="task-content"
-              v-model="currentTask.content" 
-              placeholder="세부 내용을 입력하세요"
-              class="form-textarea"
-              rows="4"
-            ></textarea>
-          </div>
-          
-          <div class="form-group">
-            <label for="task-deadline">마감일</label>
-            <input 
-              id="task-deadline"
+              id="work-start"
               type="date" 
-              v-model="currentTask.deadline" 
+              v-model="currentWork.startDate" 
               class="form-input"
             >
           </div>
           
-          <div class="form-group checkbox-group">
-            <label class="checkbox-label">
-              <input 
-                type="checkbox" 
-                v-model="currentTask.myTask" 
-                class="form-checkbox"
-              >
-              <span class="checkbox-text">내 할일</span>
-            </label>
+          <div class="form-group">
+            <label for="work-deadline">마감일</label>
+            <input 
+              id="work-deadline"
+              type="date" 
+              v-model="currentWork.deadline" 
+              class="form-input"
+            >
           </div>
         </div>
         
         <div class="modal-footer">
-          <button v-if="isEditMode" @click="deleteTask" class="delete-btn">삭제</button>
+          <button v-if="isWorkEditMode" @click="deleteWork" class="delete-btn">삭제</button>
           <div class="button-group">
-            <button @click="closeTaskModal" class="cancel-btn">취소</button>
-            <button @click="saveTask" class="save-btn">저장</button>
+            <button @click="closeWorkModal" class="cancel-btn">취소</button>
+            <button @click="saveWork" class="save-btn">저장</button>
           </div>
         </div>
       </div>
@@ -535,50 +528,41 @@ const selectedDate = ref(new Date())
 const currentWeek = ref(new Date())
 
 // 모달 관련 상태
-const showTaskModal = ref(false)
-const selectedDay = ref(null)
-const currentTask = ref(null)
-const isEditMode = ref(false)
+const showWorkModal = ref(false)
+const currentWork = ref(null)
+const isWorkEditMode = ref(false)
 
 // 일정 모달 관련 상태
 const showScheduleModal = ref(false)
 const currentSchedule = ref(null)
 
-// 할일 데이터
-const todayTasks = ref({
-  // 예시 데이터
-  '2025-07-08': [
-    { 
-      id: 1, 
-      name: '회의', 
-      content: '오전 10시 프로젝트 모임',
-      projectId: 1,
-      subjectId: 1,
-      deadline: '2025-07-08',
-      myTask: true
-    },
-    { 
-      id: 2, 
-      name: '이메일', 
-      content: '고객 문의 답변',
-      projectId: 2,
-      subjectId: 2,
-      deadline: '2025-07-09',
-      myTask: false
-    }
-  ],
-  '2025-07-09': [
-    { 
-      id: 3, 
-      name: '문서작성', 
-      content: '기획서 작성',
-      projectId: 1,
-      subjectId: 3,
-      deadline: '2025-07-10',
-      myTask: true
-    }
-  ]
-})
+// 오늘의 업무 데이터
+const todayWorks = ref([
+  {
+    id: 1,
+    projectName: '웹사이트 리뉴얼',
+    taskName: '메인 페이지 디자인 검토',
+    status: '진행중',
+    startDate: '2025-07-19',
+    deadline: '2025-07-21'
+  },
+  {
+    id: 2,
+    projectName: '모바일 앱 개발',
+    taskName: 'UI 컴포넌트 개발',
+    status: '예정',
+    startDate: '2025-07-20',
+    deadline: '2025-07-25'
+  },
+  {
+    id: 3,
+    projectName: '마케팅 캠페인',
+    taskName: '소셜미디어 콘텐츠 작성',
+    status: '완료',
+    startDate: '2025-07-15',
+    deadline: '2025-07-19'
+  }
+])
 
 // 연간 사업 목록 (API에서 가져올 데이터)
 const yearlyProjects = ref([])
@@ -936,89 +920,98 @@ const selectDate = (day) => {
   currentWeek.value = new Date(day.date)
 }
 
-// 연간사업 선택 변경 감지
-watch(() => currentTask.value?.projectId, (newProjectId, oldProjectId) => {
-  if (newProjectId !== oldProjectId) {
-    // 연간사업이 변경되면 주제 초기화 및 새로운 주제 목록 조회
-    if (currentTask.value) {
-      currentTask.value.subjectId = null
-    }
-    fetchSubjectsByProject(newProjectId)
-  }
-})
-
-// 할일 모달 관련 메서드
-const openTodayTaskModal = (day) => {
-  selectedDay.value = day
-  currentTask.value = { 
-    name: '', 
-    content: '', 
-    projectId: null, 
-    subjectId: null, 
-    deadline: day.date,
-    myTask: false
-  }
-  isEditMode.value = false
-  showTaskModal.value = true
+// 유틸리티 함수들
+const formatDate = (dateString) => {
+  if (!dateString) return '-'
+  const date = new Date(dateString)
+  return `${date.getMonth() + 1}/${date.getDate()}`
 }
 
-const openTaskEditModal = (day, task) => {
-  selectedDay.value = day
-  currentTask.value = { ...task }
-  isEditMode.value = true
-  showTaskModal.value = true
+const getStatusClass = (status) => {
+  switch (status) {
+    case '완료': return 'status-completed'
+    case '진행중': return 'status-progress'
+    case '예정': return 'status-scheduled'
+    case '보류': return 'status-hold'
+    default: return 'status-default'
+  }
 }
 
-const closeTaskModal = () => {
-  showTaskModal.value = false
-  selectedDay.value = null
-  currentTask.value = null
-  isEditMode.value = false
+// 오늘의 업무 관련 메서드
+const addTodayWork = () => {
+  const today = new Date().toISOString().split('T')[0]
+  currentWork.value = {
+    projectId: null,
+    taskName: '',
+    status: '예정',
+    startDate: today,
+    deadline: ''
+  }
+  isWorkEditMode.value = false
+  showWorkModal.value = true
 }
 
-const saveTask = () => {
-  if (!currentTask.value.name.trim() || !selectedDay.value) return
-  
-  const dateKey = selectedDay.value.date
-  
-  if (!todayTasks.value[dateKey]) {
-    todayTasks.value[dateKey] = []
+const editTodayWork = (work) => {
+  currentWork.value = { ...work }
+  isWorkEditMode.value = true
+  showWorkModal.value = true
+}
+
+const closeWorkModal = () => {
+  showWorkModal.value = false
+  currentWork.value = null
+  isWorkEditMode.value = false
+}
+
+const saveWork = () => {
+  if (!currentWork.value.taskName.trim()) {
+    alert('업무명을 입력해주세요.')
+    return
   }
   
-  if (isEditMode.value) {
+  if (!currentWork.value.projectId) {
+    alert('사업을 선택해주세요.')
+    return
+  }
+  
+  // 선택된 프로젝트 이름 찾기
+  const selectedProject = yearlyProjects.value.find(p => p.id === currentWork.value.projectId)
+  const projectName = selectedProject ? selectedProject.name : ''
+  
+  if (isWorkEditMode.value) {
     // 수정 모드
-    const taskIndex = todayTasks.value[dateKey].findIndex(t => t.id === currentTask.value.id)
-    if (taskIndex > -1) {
-      todayTasks.value[dateKey][taskIndex] = { ...currentTask.value }
+    const workIndex = todayWorks.value.findIndex(w => w.id === currentWork.value.id)
+    if (workIndex > -1) {
+      todayWorks.value[workIndex] = {
+        ...currentWork.value,
+        projectName
+      }
     }
   } else {
-    // 새 할일 추가
-    const newTask = {
+    // 새 업무 추가
+    const newWork = {
       id: Date.now(),
-      name: currentTask.value.name,
-      content: currentTask.value.content,
-      projectId: currentTask.value.projectId,
-      subjectId: currentTask.value.subjectId,
-      deadline: currentTask.value.deadline,
-      myTask: currentTask.value.myTask
+      projectName,
+      taskName: currentWork.value.taskName,
+      status: currentWork.value.status,
+      startDate: currentWork.value.startDate,
+      deadline: currentWork.value.deadline
     }
-    todayTasks.value[dateKey].push(newTask)
+    todayWorks.value.push(newWork)
   }
   
-  closeTaskModal()
+  closeWorkModal()
 }
 
-const deleteTask = () => {
-  if (!isEditMode.value || !selectedDay.value || !currentTask.value) return
+const deleteWork = () => {
+  if (!isWorkEditMode.value || !currentWork.value) return
   
-  const dateKey = selectedDay.value.date
-  const taskIndex = todayTasks.value[dateKey].findIndex(t => t.id === currentTask.value.id)
-  
-  if (taskIndex > -1) {
-    todayTasks.value[dateKey].splice(taskIndex, 1)
+  const workIndex = todayWorks.value.findIndex(w => w.id === currentWork.value.id)
+  if (workIndex > -1) {
+    todayWorks.value.splice(workIndex, 1)
   }
   
-  closeTaskModal()
+  closeWorkModal()
 }
 
 // 일정 모달 관련 메서드
@@ -1408,6 +1401,133 @@ if (typeof window !== 'undefined') {
   height: 100%;
   display: flex;
   flex-direction: column;
+}
+
+/* 오늘의 업무 섹션 */
+.today-work-section {
+  flex-shrink: 0;
+  padding: 1.5rem;
+  border-bottom: 2px solid #e1e5e9;
+  background: #f8f9fa;
+}
+
+.today-work-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.today-work-header h4 {
+  margin: 0;
+  color: #333;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.add-work-btn {
+  background: #667eea;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.add-work-btn:hover {
+  background: #5a67d8;
+  transform: translateY(-1px);
+}
+
+/* 오늘의 업무 테이블 */
+.today-work-table {
+  border: 1px solid #e1e5e9;
+  border-radius: 8px;
+  overflow: hidden;
+  background: white;
+}
+
+.work-table-header {
+  display: grid;
+  grid-template-columns: 1fr 2fr 0.8fr 0.8fr 0.8fr;
+  background: #667eea;
+  color: white;
+}
+
+.work-header-cell {
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-align: center;
+  border-right: 1px solid rgba(255,255,255,0.2);
+}
+
+.work-header-cell:last-child {
+  border-right: none;
+}
+
+.work-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr 0.8fr 0.8fr 0.8fr;
+  border-bottom: 1px solid #e1e5e9;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.work-row:hover {
+  background: #f0f4ff;
+}
+
+.work-row:last-child {
+  border-bottom: none;
+}
+
+.work-cell {
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+  color: #333;
+  border-right: 1px solid #e1e5e9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.work-cell:last-child {
+  border-right: none;
+}
+
+/* 상태 배지 */
+.status-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: white;
+  text-align: center;
+}
+
+.status-completed {
+  background: #48bb78;
+}
+
+.status-progress {
+  background: #4299e1;
+}
+
+.status-scheduled {
+  background: #ed8936;
+}
+
+.status-hold {
+  background: #a0aec0;
+}
+
+.status-default {
+  background: #667eea;
 }
 
 .weekly-tasks {
@@ -1900,6 +2020,54 @@ if (typeof window !== 'undefined') {
   }
 }
 
+/* 빈 업무 상태 */
+.empty-work {
+  padding: 2rem;
+  text-align: center;
+  color: #666;
+}
+
+.empty-work p {
+  margin: 0 0 1rem 0;
+  font-size: 0.9rem;
+}
+
+.add-empty-work-btn {
+  background: #667eea;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+
+.add-empty-work-btn:hover {
+  background: #5a67d8;
+  transform: translateY(-1px);
+}
+
+@media (max-width: 1200px) {
+  .dashboard-main {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .calendar-section {
+    order: 2;
+  }
+  
+  .right-section {
+    order: 1;
+  }
+  
+  .work-table-header,
+  .work-row {
+    grid-template-columns: 0.8fr 1.5fr 0.8fr 0.8fr 0.8fr;
+  }
+}
+
 @media (max-width: 768px) {
   .dashboard-main {
     padding: 1rem;
@@ -1916,6 +2084,27 @@ if (typeof window !== 'undefined') {
   .modal-footer {
     padding-left: 1rem;
     padding-right: 1rem;
+  }
+  
+  .work-table-header,
+  .work-row {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+  
+  .work-header-cell,
+  .work-cell {
+    border-right: none;
+    border-bottom: 1px solid #e1e5e9;
+    text-align: left;
+    justify-content: flex-start;
+  }
+  
+  .work-header-cell:before,
+  .work-cell:before {
+    content: attr(data-label);
+    font-weight: bold;
+    margin-right: 0.5rem;
   }
 }
 </style>

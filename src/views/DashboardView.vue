@@ -31,32 +31,159 @@
             <div class="header-cell">내 업무</div>
           </div>
           
-          <!-- 업무 목록 -->
-          <div 
-            v-for="work in todayWorks" 
-            :key="work.id"
-            class="table-row"
-            @click="editWork(work)"
-          >
-            <div class="table-cell">{{ work.category }}</div>
-            <div class="table-cell">{{ work.name }}</div>
-            <div class="table-cell">
-              <span class="status-badge" :class="getStatusClass(work.status)">
-                {{ work.status }}
-              </span>
-            </div>
-            <div class="table-cell">{{ formatDate(work.startDate) }}</div>
-            <div class="table-cell">{{ formatDate(work.endDate) }}</div>
-            <div class="table-cell">
-              <input 
-                type="checkbox" 
-                :checked="work.isMyWork" 
-                class="my-work-checkbox readonly"
-                readonly
-                @click.prevent
-              >
-            </div>
-          </div>
+          <!-- 업무 목록 (계층형) -->
+          <template v-for="category in hierarchicalCategories" :key="category.id">
+            <!-- 최상위 카테고리 (업무가 있는 경우만 표시) -->
+            <template v-if="hasWorksInCategory(category)">
+              <div class="category-row top-level" @click="toggleCategory(category.id)">
+                <div class="table-cell category-cell">
+                  <span class="dropdown-icon" :class="{ 'expanded': category.expanded }">▶</span>
+                  <span class="category-name">{{ category.name }}</span>
+                </div>
+                <div class="table-cell"></div>
+                <div class="table-cell"></div>
+                <div class="table-cell"></div>
+                <div class="table-cell"></div>
+                <div class="table-cell"></div>
+              </div>
+              
+              <!-- 최상위 카테고리의 직속 업무들 (드롭다운 안 한 경우) -->
+              <template v-if="!category.expanded">
+                <template v-for="work in getWorksForCategory(category.id)" :key="work.id">
+                  <div 
+                    class="table-row work-row"
+                    @click="editWork(work)"
+                  >
+                    <div class="table-cell work-category">
+                      <span class="indent-1"></span>
+                      <span class="work-indicator">•</span>
+                    </div>
+                    <div class="table-cell">{{ work.name }}</div>
+                    <div class="table-cell">
+                      <span class="status-badge" :class="getStatusClass(work.status)">
+                        {{ work.status }}
+                      </span>
+                    </div>
+                    <div class="table-cell">{{ formatDate(work.startDate) }}</div>
+                    <div class="table-cell">{{ formatDate(work.endDate) }}</div>
+                    <div class="table-cell">
+                      <input 
+                        type="checkbox" 
+                        :checked="work.isMyWork" 
+                        class="my-work-checkbox readonly"
+                        readonly
+                        @click.prevent
+                      >
+                    </div>
+                  </div>
+                </template>
+              </template>
+              
+              <!-- 하위 카테고리들 (확장된 경우) -->
+              <template v-if="category.expanded">
+                <template v-for="subCategory in category.children" :key="subCategory.id">
+                  <template v-if="hasWorksInCategory(subCategory)">
+                    <!-- 2단계 카테고리 -->
+                    <div class="category-row sub-level-1" @click="toggleCategory(subCategory.id)">
+                      <div class="table-cell category-cell">
+                        <span class="indent-1"></span>
+                        <span class="dropdown-icon" :class="{ 'expanded': subCategory.expanded }">▶</span>
+                        <span class="category-name">{{ subCategory.name }}</span>
+                      </div>
+                      <div class="table-cell"></div>
+                      <div class="table-cell"></div>
+                      <div class="table-cell"></div>
+                      <div class="table-cell"></div>
+                      <div class="table-cell"></div>
+                    </div>
+                    
+                    <!-- 2단계 카테고리의 직속 업무들 (드롭다운 안 한 경우) -->
+                    <template v-if="!subCategory.expanded">
+                      <template v-for="work in getWorksForCategory(subCategory.id)" :key="work.id">
+                        <div 
+                          class="table-row work-row"
+                          @click="editWork(work)"
+                        >
+                          <div class="table-cell work-category">
+                            <span class="indent-2"></span>
+                            <span class="work-indicator">•</span>
+                          </div>
+                          <div class="table-cell">{{ work.name }}</div>
+                          <div class="table-cell">
+                            <span class="status-badge" :class="getStatusClass(work.status)">
+                              {{ work.status }}
+                            </span>
+                          </div>
+                          <div class="table-cell">{{ formatDate(work.startDate) }}</div>
+                          <div class="table-cell">{{ formatDate(work.endDate) }}</div>
+                          <div class="table-cell">
+                            <input 
+                              type="checkbox" 
+                              :checked="work.isMyWork" 
+                              class="my-work-checkbox readonly"
+                              readonly
+                              @click.prevent
+                            >
+                          </div>
+                        </div>
+                      </template>
+                    </template>
+                    
+                    <!-- 3단계 카테고리들 (확장된 경우) -->
+                    <template v-if="subCategory.expanded">
+                      <template v-for="subSubCategory in subCategory.children" :key="subSubCategory.id">
+                        <template v-if="hasWorksInCategory(subSubCategory)">
+                          <!-- 3단계 카테고리 -->
+                          <div class="category-row sub-level-2" @click="toggleCategory(subSubCategory.id)">
+                            <div class="table-cell category-cell">
+                              <span class="indent-2"></span>
+                              <span class="dropdown-icon" :class="{ 'expanded': subSubCategory.expanded }">▶</span>
+                              <span class="category-name">{{ subSubCategory.name }}</span>
+                            </div>
+                            <div class="table-cell"></div>
+                            <div class="table-cell"></div>
+                            <div class="table-cell"></div>
+                            <div class="table-cell"></div>
+                            <div class="table-cell"></div>
+                          </div>
+                          
+                          <!-- 해당 카테고리의 업무들 -->
+                          <template v-for="work in getWorksForCategory(subSubCategory.id)" :key="work.id">
+                            <div 
+                              class="table-row work-row"
+                              @click="editWork(work)"
+                            >
+                              <div class="table-cell work-category">
+                                <span class="indent-3"></span>
+                                <span class="work-indicator">•</span>
+                              </div>
+                              <div class="table-cell">{{ work.name }}</div>
+                              <div class="table-cell">
+                                <span class="status-badge" :class="getStatusClass(work.status)">
+                                  {{ work.status }}
+                                </span>
+                              </div>
+                              <div class="table-cell">{{ formatDate(work.startDate) }}</div>
+                              <div class="table-cell">{{ formatDate(work.endDate) }}</div>
+                              <div class="table-cell">
+                                <input 
+                                  type="checkbox" 
+                                  :checked="work.isMyWork" 
+                                  class="my-work-checkbox readonly"
+                                  readonly
+                                  @click.prevent
+                                >
+                              </div>
+                            </div>
+                          </template>
+                        </template>
+                      </template>
+                    </template>
+                  </template>
+                </template>
+              </template>
+            </template>
+          </template>
           
           <!-- 빈 상태 -->
           <div v-if="todayWorks.length === 0" class="empty-state">
@@ -138,13 +265,11 @@
             <label>프로젝트</label>
             <select v-model="currentWork.categoryId" class="form-select">
               <option value="">프로젝트를 선택하세요</option>
-              <option 
-                v-for="category in topCategories" 
-                :key="category.id" 
-                :value="category.id"
-              >
-                {{ category.name }}
-              </option>
+              <template v-for="category in flattenedCategories" :key="category.id">
+                <option :value="category.id">
+                  {{ '　'.repeat(category.level) }}{{ category.name }}
+                </option>
+              </template>
             </select>
           </div>
           
@@ -218,12 +343,118 @@ const isEditMode = ref(false)
 const currentWork = ref({})
 const currentWeek = ref(new Date())
 
-// 오늘의 업무 데이터
+// 계층형 카테고리 데이터
+const hierarchicalCategories = ref([
+  {
+    id: 1,
+    name: '웹사이트 리뉴얼',
+    expanded: true,
+    level: 0,
+    children: [
+      {
+        id: 11,
+        name: 'UI/UX 디자인',
+        expanded: false,
+        level: 1,
+        parentId: 1,
+        children: [
+          { id: 111, name: '메인 페이지', expanded: false, level: 2, parentId: 11, children: [] },
+          { id: 112, name: '상품 페이지', expanded: false, level: 2, parentId: 11, children: [] },
+          { id: 113, name: '결제 페이지', expanded: false, level: 2, parentId: 11, children: [] }
+        ]
+      },
+      {
+        id: 12,
+        name: '프론트엔드 개발',
+        expanded: false,
+        level: 1,
+        parentId: 1,
+        children: [
+          { id: 121, name: 'React 컴포넌트', expanded: false, level: 2, parentId: 12, children: [] },
+          { id: 122, name: 'API 연동', expanded: false, level: 2, parentId: 12, children: [] }
+        ]
+      },
+      {
+        id: 13,
+        name: '백엔드 개발',
+        expanded: false,
+        level: 1,
+        parentId: 1,
+        children: [
+          { id: 131, name: 'API 설계', expanded: false, level: 2, parentId: 13, children: [] },
+          { id: 132, name: '데이터베이스', expanded: false, level: 2, parentId: 13, children: [] }
+        ]
+      }
+    ]
+  },
+  {
+    id: 2,
+    name: '모바일 앱 개발',
+    expanded: false,
+    level: 0,
+    children: [
+      {
+        id: 21,
+        name: 'iOS 앱',
+        expanded: false,
+        level: 1,
+        parentId: 2,
+        children: [
+          { id: 211, name: 'Swift UI', expanded: false, level: 2, parentId: 21, children: [] },
+          { id: 212, name: '앱스토어 배포', expanded: false, level: 2, parentId: 21, children: [] }
+        ]
+      },
+      {
+        id: 22,
+        name: 'Android 앱',
+        expanded: false,
+        level: 1,
+        parentId: 2,
+        children: [
+          { id: 221, name: 'Kotlin 개발', expanded: false, level: 2, parentId: 22, children: [] },
+          { id: 222, name: '플레이스토어 배포', expanded: false, level: 2, parentId: 22, children: [] }
+        ]
+      }
+    ]
+  },
+  {
+    id: 3,
+    name: '마케팅 캠페인',
+    expanded: false,
+    level: 0,
+    children: [
+      {
+        id: 31,
+        name: '디지털 마케팅',
+        expanded: false,
+        level: 1,
+        parentId: 3,
+        children: [
+          { id: 311, name: 'SNS 광고', expanded: false, level: 2, parentId: 31, children: [] },
+          { id: 312, name: '검색 광고', expanded: false, level: 2, parentId: 31, children: [] }
+        ]
+      },
+      {
+        id: 32,
+        name: '콘텐츠 제작',
+        expanded: false,
+        level: 1,
+        parentId: 3,
+        children: [
+          { id: 321, name: '블로그 포스팅', expanded: false, level: 2, parentId: 32, children: [] },
+          { id: 322, name: '동영상 제작', expanded: false, level: 2, parentId: 32, children: [] }
+        ]
+      }
+    ]
+  }
+])
+
+// 오늘의 업무 데이터 (최상위 카테고리에 배치)
 const todayWorks = ref([
   {
     id: 1,
     name: '메인 페이지 디자인 검토',
-    category: '웹사이트 리뉴얼',
+    categoryId: 1, // 웹사이트 리뉴얼 (최상위)
     status: '진행중',
     startDate: '2025-07-21',
     endDate: '2025-07-23',
@@ -232,7 +463,7 @@ const todayWorks = ref([
   {
     id: 2,
     name: 'UI 컴포넌트 개발',
-    category: '모바일 앱 개발',
+    categoryId: 1, // 웹사이트 리뉴얼 (최상위)
     status: '예정',
     startDate: '2025-07-22',
     endDate: '2025-07-25',
@@ -241,15 +472,24 @@ const todayWorks = ref([
   {
     id: 3,
     name: '소셜미디어 콘텐츠 작성',
-    category: '마케팅 캠페인',
+    categoryId: 3, // 마케팅 캠페인 (최상위)
     status: '완료',
     startDate: '2025-07-19',
     endDate: '2025-07-21',
     isMyWork: true
+  },
+  {
+    id: 4,
+    name: 'API 설계 문서 작성',
+    categoryId: 1, // 웹사이트 리뉴얼 (최상위)
+    status: '진행중',
+    startDate: '2025-07-20',
+    endDate: '2025-07-24',
+    isMyWork: true
   }
 ])
 
-// 상위 카테고리 데이터
+// 상위 카테고리 데이터 (주간 테이블용)
 const topCategories = ref([
   { id: 1, name: '웹사이트 리뉴얼', color: '#FF6B6B' },
   { id: 2, name: '모바일 앱 개발', color: '#4ECDC4' },
@@ -257,6 +497,25 @@ const topCategories = ref([
   { id: 4, name: '데이터 분석', color: '#96CEB4' },
   { id: 5, name: '운영 관리', color: '#FFEAA7' }
 ])
+
+// 평면화된 카테고리 목록 (모달 드롭다운용)
+const flattenedCategories = computed(() => {
+  const flatten = (categories, level = 0) => {
+    let result = []
+    for (const category of categories) {
+      result.push({
+        id: category.id,
+        name: category.name,
+        level: level
+      })
+      if (category.children && category.children.length > 0) {
+        result = result.concat(flatten(category.children, level + 1))
+      }
+    }
+    return result
+  }
+  return flatten(hierarchicalCategories.value)
+})
 
 // 현재 주 제목
 const currentWeekTitle = computed(() => {
@@ -320,6 +579,110 @@ const getStatusClass = (status) => {
   }
 }
 
+// 카테고리 관련 함수
+const toggleCategory = (categoryId) => {
+  const toggleCategoryInList = (categories) => {
+    for (const category of categories) {
+      if (category.id === categoryId) {
+        category.expanded = !category.expanded
+        
+        // 카테고리를 확장할 때 업무를 하위 카테고리로 이동
+        if (category.expanded) {
+          moveWorksToSubCategories(category)
+        } else {
+          // 카테고리를 축소할 때 업무를 상위 카테고리로 이동
+          moveWorksToParentCategory(category)
+        }
+        
+        return true
+      }
+      if (category.children && toggleCategoryInList(category.children)) {
+        return true
+      }
+    }
+    return false
+  }
+  toggleCategoryInList(hierarchicalCategories.value)
+}
+
+// 업무를 하위 카테고리로 이동
+const moveWorksToSubCategories = (category) => {
+  const worksToMove = todayWorks.value.filter(work => work.categoryId === category.id)
+  
+  worksToMove.forEach((work, index) => {
+    if (category.children && category.children.length > 0) {
+      // 업무를 순서대로 하위 카테고리에 분배
+      const subCategoryIndex = index % category.children.length
+      const targetSubCategory = category.children[subCategoryIndex]
+      
+      // 하위 카테고리에 자식이 있으면 첫 번째 자식으로, 없으면 자신으로
+      if (targetSubCategory.children && targetSubCategory.children.length > 0) {
+        work.categoryId = targetSubCategory.children[0].id
+      } else {
+        work.categoryId = targetSubCategory.id
+      }
+    }
+  })
+}
+
+// 업무를 상위 카테고리로 이동
+const moveWorksToParentCategory = (category) => {
+  const getAllChildrenIds = (cat) => {
+    let ids = []
+    if (cat.children) {
+      for (const child of cat.children) {
+        ids.push(child.id)
+        ids = ids.concat(getAllChildrenIds(child))
+      }
+    }
+    return ids
+  }
+  
+  const childrenIds = getAllChildrenIds(category)
+  const worksToMove = todayWorks.value.filter(work => childrenIds.includes(work.categoryId))
+  
+  worksToMove.forEach(work => {
+    work.categoryId = category.id
+  })
+}
+
+const findCategoryById = (categoryId, categories = hierarchicalCategories.value) => {
+  for (const category of categories) {
+    if (category.id === categoryId) {
+      return category
+    }
+    if (category.children) {
+      const found = findCategoryById(categoryId, category.children)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+const getWorksForCategory = (categoryId) => {
+  return todayWorks.value.filter(work => work.categoryId === categoryId)
+}
+
+const hasWorksInCategory = (category) => {
+  const getAllChildrenIds = (cat) => {
+    let ids = [cat.id]
+    if (cat.children) {
+      for (const child of cat.children) {
+        ids = ids.concat(getAllChildrenIds(child))
+      }
+    }
+    return ids
+  }
+  
+  const allIds = getAllChildrenIds(category)
+  return todayWorks.value.some(work => allIds.includes(work.categoryId))
+}
+
+const getCategoryName = (categoryId) => {
+  const category = findCategoryById(categoryId)
+  return category ? category.name : ''
+}
+
 // 이벤트 핸들러
 const prevWeek = () => {
   const newWeek = new Date(currentWeek.value)
@@ -374,15 +737,12 @@ const saveWork = () => {
     return
   }
   
-  const category = topCategories.value.find(c => c.id === currentWork.value.categoryId)
-  
   if (isEditMode.value) {
     // 수정 모드
     const workIndex = todayWorks.value.findIndex(w => w.id === currentWork.value.id)
     if (workIndex > -1) {
       todayWorks.value[workIndex] = {
-        ...currentWork.value,
-        category: category?.name || ''
+        ...currentWork.value
       }
     }
   } else {
@@ -390,7 +750,7 @@ const saveWork = () => {
     const newWork = {
       id: Date.now(),
       name: currentWork.value.name,
-      category: category?.name || '',
+      categoryId: currentWork.value.categoryId,
       status: currentWork.value.status,
       startDate: currentWork.value.startDate,
       endDate: currentWork.value.endDate,
@@ -548,7 +908,8 @@ onMounted(() => {
   border-right: none;
 }
 
-.table-row {
+/* 카테고리 행 스타일 */
+.category-row {
   display: grid;
   grid-template-columns: 1.5fr 2fr 1fr 1fr 1fr 0.8fr;
   border-bottom: 1px solid #e1e5e9;
@@ -556,12 +917,113 @@ onMounted(() => {
   transition: background 0.2s;
 }
 
-.table-row:hover {
+.category-row:hover {
   background: #f8f9ff;
+}
+
+.category-row.top-level {
+  background: #f8f9fa;
+  font-weight: 600;
+  color: #2d3748 !important;
+  text-shadow: none !important;
+  opacity: 1 !important;
+}
+
+.category-row.sub-level-1 {
+  background: #fbfbfb;
+  font-weight: 500;
+  color: #4a5568 !important;
+  text-shadow: none !important;
+  opacity: 1 !important;
+}
+
+.category-row.sub-level-2 {
+  background: #fefefe;
+  font-weight: 400;
+  color: #718096 !important;
+  text-shadow: none !important;
+  opacity: 1 !important;
+}
+
+.category-cell {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-right: 1px solid #e1e5e9;
+  color: inherit !important;
+  text-shadow: none !important;
+  opacity: 1 !important;
+}
+
+.dropdown-icon {
+  margin-right: 0.5rem;
+  font-size: 0.8rem;
+  transition: transform 0.2s;
+  color: #2d3748 !important;
+  width: 12px;
+  display: inline-block;
+  font-weight: bold;
+  text-shadow: none !important;
+  opacity: 1 !important;
+}
+
+.dropdown-icon.expanded {
+  transform: rotate(90deg);
+}
+
+.category-name {
+  flex: 1;
+  text-align: left;
+  color: inherit !important;
+  text-shadow: none !important;
+  opacity: 1 !important;
+}
+
+/* 들여쓰기 */
+.indent-1 {
+  width: 20px;
+  display: inline-block;
+}
+
+.indent-2 {
+  width: 40px;
+  display: inline-block;
+}
+
+.indent-3 {
+  width: 60px;
+  display: inline-block;
+}
+
+/* 업무 행 스타일 */
+.table-row {
+  display: grid;
+  grid-template-columns: 1.5fr 2fr 1fr 1fr 1fr 0.8fr;
+  border-bottom: 1px solid #e1e5e9;
+  cursor: pointer;
+  transition: background 0.2s;
+  background: white;
+}
+
+.table-row:hover {
+  background: #f0f4ff;
 }
 
 .table-row:last-child {
   border-bottom: none;
+}
+
+.work-category {
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.work-indicator {
+  color: #2d3748 !important;
+  font-weight: bold;
+  margin-left: 0.5rem;
+  text-shadow: none !important;
+  opacity: 1 !important;
 }
 
 .table-cell {
@@ -571,7 +1033,9 @@ onMounted(() => {
   justify-content: center;
   text-align: center;
   border-right: 1px solid #e1e5e9;
-  color: #333;
+  color: #2d3748 !important;
+  text-shadow: none !important;
+  opacity: 1 !important;
 }
 
 .table-cell:last-child {
@@ -942,7 +1406,8 @@ onMounted(() => {
   }
   
   .table-header,
-  .table-row {
+  .table-row,
+  .category-row {
     grid-template-columns: 1fr;
   }
   

@@ -56,7 +56,7 @@
                   >
                     <div class="table-cell work-category">
                       <span class="indent-1"></span>
-                      <span class="work-indicator">•</span>
+                      <span class="work-indicator">┗</span>
                     </div>
                     <div class="table-cell">{{ work.name }}</div>
                     <div class="table-cell">
@@ -84,10 +84,9 @@
                 <template v-for="subCategory in category.children" :key="subCategory.id">
                   <template v-if="hasWorksInCategory(subCategory)">
                     <!-- 2단계 카테고리 -->
-                    <div class="category-row sub-level-1" @click="toggleCategory(subCategory.id)">
+                    <div class="category-row sub-level-1">
                       <div class="table-cell category-cell">
-                        <span class="indent-1"></span>
-                        <span class="dropdown-icon" :class="{ 'expanded': subCategory.expanded }">▶</span>
+                        <span class="tree-connector">┗ </span>
                         <span class="category-name">{{ subCategory.name }}</span>
                       </div>
                       <div class="table-cell"></div>
@@ -97,8 +96,8 @@
                       <div class="table-cell"></div>
                     </div>
                     
-                    <!-- 2단계 카테고리의 직속 업무들 (드롭다운 안 한 경우) -->
-                    <template v-if="!subCategory.expanded">
+                    <!-- 2단계에 직속 업무가 있으면 표시 -->
+                    <template v-if="hasDirectWorksInCategory(subCategory)">
                       <template v-for="work in getWorksForCategory(subCategory.id)" :key="work.id">
                         <div 
                           class="table-row work-row"
@@ -106,7 +105,7 @@
                         >
                           <div class="table-cell work-category">
                             <span class="indent-2"></span>
-                            <span class="work-indicator">•</span>
+                            <span class="work-indicator">┗</span>
                           </div>
                           <div class="table-cell">{{ work.name }}</div>
                           <div class="table-cell">
@@ -129,15 +128,14 @@
                       </template>
                     </template>
                     
-                    <!-- 3단계 카테고리들 (확장된 경우) -->
-                    <template v-if="subCategory.expanded">
+                    <!-- 3단계 카테고리들 (2단계에 직속 업무가 없거나 확장된 경우) -->
+                    <template v-if="!hasDirectWorksInCategory(subCategory) || subCategory.expanded">
                       <template v-for="subSubCategory in subCategory.children" :key="subSubCategory.id">
                         <template v-if="hasWorksInCategory(subSubCategory)">
                           <!-- 3단계 카테고리 -->
-                          <div class="category-row sub-level-2" @click="toggleCategory(subSubCategory.id)">
+                          <div class="category-row sub-level-2">
                             <div class="table-cell category-cell">
-                              <span class="indent-2"></span>
-                              <span class="dropdown-icon" :class="{ 'expanded': subSubCategory.expanded }">▶</span>
+                              <span class="tree-connector">　　┗ </span>
                               <span class="category-name">{{ subSubCategory.name }}</span>
                             </div>
                             <div class="table-cell"></div>
@@ -155,7 +153,7 @@
                             >
                               <div class="table-cell work-category">
                                 <span class="indent-3"></span>
-                                <span class="work-indicator">•</span>
+                                <span class="work-indicator">┗</span>
                               </div>
                               <div class="table-cell">{{ work.name }}</div>
                               <div class="table-cell">
@@ -348,7 +346,7 @@ const hierarchicalCategories = ref([
   {
     id: 1,
     name: '웹사이트 리뉴얼',
-    expanded: true,
+    expanded: false,
     level: 0,
     children: [
       {
@@ -678,6 +676,11 @@ const hasWorksInCategory = (category) => {
   return todayWorks.value.some(work => allIds.includes(work.categoryId))
 }
 
+// 해당 카테고리에 직속으로 업무가 있는지 확인 (하위 카테고리 제외)
+const hasDirectWorksInCategory = (category) => {
+  return todayWorks.value.some(work => work.categoryId === category.id)
+}
+
 const getCategoryName = (categoryId) => {
   const category = findCategoryById(categoryId)
   return category ? category.name : ''
@@ -971,6 +974,25 @@ onMounted(() => {
   transform: rotate(90deg);
 }
 
+.tree-connector {
+  color: #1a202c !important;
+  font-weight: 900 !important;
+  text-shadow: 0.5px 0.5px 0px #1a202c !important;
+  opacity: 1 !important;
+  font-family: monospace;
+  font-size: 1.1em !important;
+}
+
+.work-indicator {
+  color: #1a202c !important;
+  font-weight: 900 !important;
+  margin-left: 0.5rem;
+  text-shadow: 0.5px 0.5px 0px #1a202c !important;
+  opacity: 1 !important;
+  font-family: monospace;
+  font-size: 1.1em !important;
+}
+
 .category-name {
   flex: 1;
   text-align: left;
@@ -1016,14 +1038,6 @@ onMounted(() => {
 .work-category {
   justify-content: flex-start;
   text-align: left;
-}
-
-.work-indicator {
-  color: #2d3748 !important;
-  font-weight: bold;
-  margin-left: 0.5rem;
-  text-shadow: none !important;
-  opacity: 1 !important;
 }
 
 .table-cell {

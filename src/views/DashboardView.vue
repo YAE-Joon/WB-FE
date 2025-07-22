@@ -47,15 +47,15 @@
                 <div class="table-cell"></div>
               </div>
               
-              <!-- 최상위 카테고리의 직속 업무들 (드롭다운 안 한 경우) -->
+              <!-- 최상위 카테고리의 업무들 (드롭다운 안 한 경우 - 하위 카테고리 업무 포함) -->
               <template v-if="!category.expanded">
-                <template v-for="work in getWorksForCategory(category.id)" :key="work.id">
+                <template v-for="work in getWorksForTopCategory(category.id)" :key="work.id">
                   <div 
                     class="table-row work-row"
                     @click="editWork(work)"
                   >
                     <div class="table-cell work-category">
-                      <span class="indent-1"></span>
+                      <span class="work-indent">　</span>
                       <span class="work-indicator">┗</span>
                     </div>
                     <div class="table-cell">{{ work.name }}</div>
@@ -86,7 +86,7 @@
                     <!-- 2단계 카테고리 -->
                     <div class="category-row sub-level-1">
                       <div class="table-cell category-cell">
-                        <span class="tree-connector">┗ </span>
+                        <span class="tree-connector">┗　　</span>
                         <span class="category-name">{{ subCategory.name }}</span>
                       </div>
                       <div class="table-cell"></div>
@@ -104,7 +104,7 @@
                           @click="editWork(work)"
                         >
                           <div class="table-cell work-category">
-                            <span class="indent-2"></span>
+                            <span class="work-indent">　</span>
                             <span class="work-indicator">┗</span>
                           </div>
                           <div class="table-cell">{{ work.name }}</div>
@@ -135,7 +135,7 @@
                           <!-- 3단계 카테고리 -->
                           <div class="category-row sub-level-2">
                             <div class="table-cell category-cell">
-                              <span class="tree-connector">　　┗ </span>
+                              <span class="tree-connector">　　┗　　</span>
                               <span class="category-name">{{ subSubCategory.name }}</span>
                             </div>
                             <div class="table-cell"></div>
@@ -152,7 +152,7 @@
                               @click="editWork(work)"
                             >
                               <div class="table-cell work-category">
-                                <span class="indent-3"></span>
+                                <span class="work-indent">　</span>
                                 <span class="work-indicator">┗</span>
                               </div>
                               <div class="table-cell">{{ work.name }}</div>
@@ -447,12 +447,12 @@ const hierarchicalCategories = ref([
   }
 ])
 
-// 오늘의 업무 데이터 (최상위 카테고리에 배치)
+// 오늘의 업무 데이터 (실제 위치에 배치)
 const todayWorks = ref([
   {
     id: 1,
     name: '메인 페이지 디자인 검토',
-    categoryId: 1, // 웹사이트 리뉴얼 (최상위)
+    categoryId: 111, // UI/UX 디자인 > 메인 페이지 (최하위)
     status: '진행중',
     startDate: '2025-07-21',
     endDate: '2025-07-23',
@@ -461,7 +461,7 @@ const todayWorks = ref([
   {
     id: 2,
     name: 'UI 컴포넌트 개발',
-    categoryId: 1, // 웹사이트 리뉴얼 (최상위)
+    categoryId: 121, // 프론트엔드 개발 > React 컴포넌트 (최하위)
     status: '예정',
     startDate: '2025-07-22',
     endDate: '2025-07-25',
@@ -470,7 +470,7 @@ const todayWorks = ref([
   {
     id: 3,
     name: '소셜미디어 콘텐츠 작성',
-    categoryId: 3, // 마케팅 캠페인 (최상위)
+    categoryId: 311, // 디지털 마케팅 > SNS 광고 (최하위)
     status: '완료',
     startDate: '2025-07-19',
     endDate: '2025-07-21',
@@ -479,10 +479,19 @@ const todayWorks = ref([
   {
     id: 4,
     name: 'API 설계 문서 작성',
-    categoryId: 1, // 웹사이트 리뉴얼 (최상위)
+    categoryId: 131, // 백엔드 개발 > API 설계 (최하위)
     status: '진행중',
     startDate: '2025-07-20',
     endDate: '2025-07-24',
+    isMyWork: true
+  },
+  {
+    id: 5,
+    name: '로고 디자인 시안 제작',
+    categoryId: 1, // 웹사이트 리뉴얼 (최상위 직속)
+    status: '예정',
+    startDate: '2025-07-23',
+    endDate: '2025-07-26',
     isMyWork: true
   }
 ])
@@ -583,15 +592,6 @@ const toggleCategory = (categoryId) => {
     for (const category of categories) {
       if (category.id === categoryId) {
         category.expanded = !category.expanded
-        
-        // 카테고리를 확장할 때 업무를 하위 카테고리로 이동
-        if (category.expanded) {
-          moveWorksToSubCategories(category)
-        } else {
-          // 카테고리를 축소할 때 업무를 상위 카테고리로 이동
-          moveWorksToParentCategory(category)
-        }
-        
         return true
       }
       if (category.children && toggleCategoryInList(category.children)) {
@@ -601,47 +601,6 @@ const toggleCategory = (categoryId) => {
     return false
   }
   toggleCategoryInList(hierarchicalCategories.value)
-}
-
-// 업무를 하위 카테고리로 이동
-const moveWorksToSubCategories = (category) => {
-  const worksToMove = todayWorks.value.filter(work => work.categoryId === category.id)
-  
-  worksToMove.forEach((work, index) => {
-    if (category.children && category.children.length > 0) {
-      // 업무를 순서대로 하위 카테고리에 분배
-      const subCategoryIndex = index % category.children.length
-      const targetSubCategory = category.children[subCategoryIndex]
-      
-      // 하위 카테고리에 자식이 있으면 첫 번째 자식으로, 없으면 자신으로
-      if (targetSubCategory.children && targetSubCategory.children.length > 0) {
-        work.categoryId = targetSubCategory.children[0].id
-      } else {
-        work.categoryId = targetSubCategory.id
-      }
-    }
-  })
-}
-
-// 업무를 상위 카테고리로 이동
-const moveWorksToParentCategory = (category) => {
-  const getAllChildrenIds = (cat) => {
-    let ids = []
-    if (cat.children) {
-      for (const child of cat.children) {
-        ids.push(child.id)
-        ids = ids.concat(getAllChildrenIds(child))
-      }
-    }
-    return ids
-  }
-  
-  const childrenIds = getAllChildrenIds(category)
-  const worksToMove = todayWorks.value.filter(work => childrenIds.includes(work.categoryId))
-  
-  worksToMove.forEach(work => {
-    work.categoryId = category.id
-  })
 }
 
 const findCategoryById = (categoryId, categories = hierarchicalCategories.value) => {
@@ -659,6 +618,25 @@ const findCategoryById = (categoryId, categories = hierarchicalCategories.value)
 
 const getWorksForCategory = (categoryId) => {
   return todayWorks.value.filter(work => work.categoryId === categoryId)
+}
+
+// 드롭다운 전에 최상위에서 보여줄 업무들 (하위 카테고리 업무 포함)
+const getWorksForTopCategory = (categoryId) => {
+  const category = findCategoryById(categoryId)
+  if (!category) return []
+  
+  const getAllChildrenIds = (cat) => {
+    let ids = [cat.id]
+    if (cat.children) {
+      for (const child of cat.children) {
+        ids = ids.concat(getAllChildrenIds(child))
+      }
+    }
+    return ids
+  }
+  
+  const allIds = getAllChildrenIds(category)
+  return todayWorks.value.filter(work => allIds.includes(work.categoryId))
 }
 
 const hasWorksInCategory = (category) => {
@@ -986,7 +964,6 @@ onMounted(() => {
 .work-indicator {
   color: #1a202c !important;
   font-weight: 900 !important;
-  margin-left: 0.5rem;
   text-shadow: 0.5px 0.5px 0px #1a202c !important;
   opacity: 1 !important;
   font-family: monospace;

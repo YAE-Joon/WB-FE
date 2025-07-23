@@ -249,17 +249,55 @@
         </div>
         
         <div class="modal-body">
-          <div class="form-group">
-            <label>업무명</label>
-            <input 
-              v-model="currentWork.name" 
-              type="text" 
-              placeholder="업무명을 입력하세요"
-              class="form-input"
-            >
+          <!-- 1단계: 프로젝트 선택 (새 업무 추가일 때만) -->
+          <div v-if="!isEditMode" class="project-selection">
+            <label class="selection-label">
+              <span class="step-indicator">1</span>
+              프로젝트 선택 (필수)
+            </label>
+            
+            <!-- 검색 -->
+            <div class="search-container">
+              <input 
+                v-model="projectSearchTerm"
+                type="text" 
+                placeholder="프로젝트 검색..." 
+                class="search-input"
+              />
+            </div>
+            
+            <!-- 트리 컨테이너 -->
+            <div class="tree-container">
+              <template v-if="filteredCategories.length === 0">
+                <div class="empty-state">
+                  <p>프로젝트가 없습니다.</p>
+                </div>
+              </template>
+              <template v-else>
+                <TreeNode 
+                  v-for="category in filteredCategories" 
+                  :key="category.id"
+                  :node="category"
+                  :expanded-nodes="expandedProjectNodes"
+                  :selected-project="selectedProjectForWork"
+                  @toggle-expand="toggleProjectExpand"
+                  @select-project="selectProjectForWork"
+                />
+              </template>
+            </div>
+            
+            <!-- 선택된 프로젝트 표시 -->
+            <div v-if="selectedProjectForWork" class="selected-project-display">
+              <div class="selected-project-info">
+                <div class="selected-project-name">{{ selectedProjectForWork.name }}</div>
+                <div class="selected-project-path">{{ getSelectedProjectPath() }}</div>
+              </div>
+              <button @click="clearProjectSelection" class="clear-selection-btn">×</button>
+            </div>
           </div>
-          
-          <div class="form-group">
+
+          <!-- 수정 모드일 때는 기존 드롭다운 -->
+          <div v-if="isEditMode" class="form-group">
             <label>프로젝트</label>
             <select v-model="currentWork.categoryId" class="form-select">
               <option value="">프로젝트를 선택하세요</option>
@@ -270,47 +308,63 @@
               </template>
             </select>
           </div>
-          
-          <div class="form-group">
-            <label>상태</label>
-            <select v-model="currentWork.status" class="form-select">
-              <option value="예정">예정</option>
-              <option value="진행중">진행중</option>
-              <option value="완료">완료</option>
-              <option value="보류">보류</option>
-            </select>
-          </div>
-          
-          <div class="form-group">
-            <label>시작일</label>
-            <input 
-              v-model="currentWork.startDate" 
-              type="date" 
-              class="form-input"
-            >
-          </div>
-          
-          <div class="form-group">
-            <label>마감일</label>
-            <input 
-              v-model="currentWork.endDate" 
-              type="date" 
-              class="form-input"
-            >
-          </div>
-          
-          <div class="form-group">
-            <label>내 업무</label>
-            <div class="checkbox-group">
-              <input 
-                type="checkbox" 
-                v-model="currentWork.isMyWork" 
-                id="my-work-checkbox"
-                class="form-checkbox"
-              >
-              <label for="my-work-checkbox" class="checkbox-label">
-                내가 담당하는 업무입니다
+
+          <!-- 2단계: 업무 상세 정보 -->
+          <div class="work-details-form" :class="{ 'enabled': isEditMode || selectedProjectForWork }">
+            <div class="form-group">
+              <label>
+                <span v-if="!isEditMode" class="step-indicator">2</span>
+                업무명
               </label>
+              <input 
+                v-model="currentWork.name" 
+                type="text" 
+                placeholder="업무명을 입력하세요"
+                class="form-input"
+              >
+            </div>
+            
+            <div class="form-group">
+              <label>상태</label>
+              <select v-model="currentWork.status" class="form-select">
+                <option value="예정">예정</option>
+                <option value="진행중">진행중</option>
+                <option value="완료">완료</option>
+                <option value="보류">보류</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label>시작일</label>
+              <input 
+                v-model="currentWork.startDate" 
+                type="date" 
+                class="form-input"
+              >
+            </div>
+            
+            <div class="form-group">
+              <label>마감일</label>
+              <input 
+                v-model="currentWork.endDate" 
+                type="date" 
+                class="form-input"
+              >
+            </div>
+            
+            <div class="form-group">
+              <label>내 업무</label>
+              <div class="checkbox-group">
+                <input 
+                  type="checkbox" 
+                  v-model="currentWork.isMyWork" 
+                  id="my-work-checkbox"
+                  class="form-checkbox"
+                >
+                <label for="my-work-checkbox" class="checkbox-label">
+                  내가 담당하는 업무입니다
+                </label>
+              </div>
             </div>
           </div>
         </div>
@@ -331,6 +385,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { useRouter } from 'vue-router'
+import TreeNode from '../components/TreeNode.vue'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -340,6 +395,11 @@ const showWorkModal = ref(false)
 const isEditMode = ref(false)
 const currentWork = ref({})
 const currentWeek = ref(new Date())
+
+// 새로운 프로젝트 선택 관련 변수들
+const projectSearchTerm = ref('')
+const expandedProjectNodes = ref(new Set([1, 11]))
+const selectedProjectForWork = ref(null)
 
 // 계층형 카테고리 데이터
 const hierarchicalCategories = ref([
@@ -522,6 +582,42 @@ const flattenedCategories = computed(() => {
     return result
   }
   return flatten(hierarchicalCategories.value)
+})
+
+// 검색 필터링된 카테고리
+const filteredCategories = computed(() => {
+  if (!projectSearchTerm.value) return hierarchicalCategories.value
+  
+  const searchTerm = projectSearchTerm.value.toLowerCase()
+  const matchingIds = new Set()
+  
+  // 평면화된 카테고리에서 검색
+  const flatList = flattenCategories(hierarchicalCategories.value)
+  const matches = flatList.filter(cat => 
+    cat.fullPath.toLowerCase().includes(searchTerm)
+  )
+  
+  // 매칭된 항목들과 그 부모들의 ID 수집
+  matches.forEach(match => {
+    let current = match
+    while (current) {
+      matchingIds.add(current.id)
+      current = flatList.find(cat => 
+        cat.children && cat.children.some(child => child.id === current.id)
+      )
+    }
+  })
+
+  // 필터링된 트리 구조 생성
+  const filterTree = (nodes) => {
+    return nodes.filter(node => matchingIds.has(node.id))
+      .map(node => ({
+        ...node,
+        children: node.children ? filterTree(node.children) : []
+      }))
+  }
+
+  return filterTree(hierarchicalCategories.value)
 })
 
 // 현재 주 제목
@@ -754,6 +850,46 @@ const deleteWork = () => {
   closeModal()
 }
 
+// 새로운 프로젝트 선택 관련 함수들
+const toggleProjectExpand = (nodeId) => {
+  if (expandedProjectNodes.value.has(nodeId)) {
+    expandedProjectNodes.value.delete(nodeId)
+  } else {
+    expandedProjectNodes.value.add(nodeId)
+  }
+}
+
+const selectProjectForWork = (project) => {
+  selectedProjectForWork.value = project
+}
+
+const clearProjectSelection = () => {
+  selectedProjectForWork.value = null
+  projectSearchTerm.value = ''
+}
+
+const getSelectedProjectPath = () => {
+  if (!selectedProjectForWork.value) return ''
+  const flatList = flattenCategories(hierarchicalCategories.value)
+  return flatList.find(cat => cat.id === selectedProjectForWork.value.id)?.fullPath || ''
+}
+
+// 유틸리티 함수
+const flattenCategories = (categories, path = []) => {
+  let result = []
+  for (const category of categories) {
+    const fullPath = [...path, category.name]
+    result.push({
+      ...category,
+      fullPath: fullPath.join(' > ')
+    })
+    if (category.children && category.children.length > 0) {
+      result = result.concat(flattenCategories(category.children, fullPath))
+    }
+  }
+  return result
+}
+
 const logout = () => {
   auth.logout()
   router.push('/')
@@ -839,6 +975,114 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+/* 새로운 프로젝트 선택 스타일 */
+.project-selection {
+  margin-bottom: 2rem;
+}
+
+.selection-label {
+  display: block;
+  margin-bottom: 1rem;
+  color: #333;
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.step-indicator {
+  background: #667eea;
+  color: white;
+  font-size: 0.8rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  margin-right: 0.5rem;
+}
+
+.search-container {
+  margin-bottom: 1rem;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 2px solid #e1e5e9;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.tree-container {
+  border: 2px solid #e1e5e9;
+  border-radius: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  background: #fafbfc;
+}
+
+.selected-project-display {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #f0f4ff;
+  border: 1px solid #667eea;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.selected-project-info {
+  flex: 1;
+}
+
+.selected-project-name {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0.25rem;
+}
+
+.selected-project-path {
+  font-size: 0.85rem;
+  color: #667eea;
+}
+
+.clear-selection-btn {
+  background: none;
+  border: none;
+  color: #ff6b6b;
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.clear-selection-btn:hover {
+  background: rgba(255, 107, 107, 0.1);
+}
+
+.work-details-form {
+  opacity: 0.5;
+  pointer-events: none;
+  transition: all 0.3s;
+}
+
+.work-details-form.enabled {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2rem;
+  color: #a0aec0;
+}
+
+/* 기존 스타일들 */
 .dashboard {
   min-height: 100vh;
   background: #f5f7fa;

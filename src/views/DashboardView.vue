@@ -759,8 +759,82 @@ const logout = () => {
   router.push('/')
 }
 
-onMounted(() => {
+onMounted(async () => {
   console.log('대시보드 로드됨')
+  
+  try {
+    console.log('📡 API 호출 중...')
+    const response = await fetch('http://127.0.0.1:8000/api/v1/work/today')
+    console.log('📨 응답 받음:', response.status, response.statusText)
+    
+    if (response.ok) {
+      const data = await response.json()
+      console.log('✅ API 응답 데이터:', data)
+      
+      // 데이터 매핑 및 화면 업데이트
+      const mappedWorks = data.map(work => ({
+        id: work.id,
+        name: work.title,
+        categoryId: work.category_id,
+        status: work.current_status,
+        startDate: work.started_at ? work.started_at.split('T')[0] : '',
+        endDate: work.deadline ? work.deadline.split('T')[0] : '',
+        isMyWork: work.myjob
+      }))
+      
+      console.log('🔄 매핑된 데이터:', mappedWorks)
+      todayWorks.value = mappedWorks  // 화면 업데이트
+      
+      // 카테고리 데이터도 가져오기 (category_id: 12)
+      console.log('📡 카테고리 데이터 요청...')
+      const categoryResponse = await fetch('http://127.0.0.1:8000/api/v1/category/categories/12')
+      
+      if (categoryResponse.ok) {
+        const categoryData = await categoryResponse.json()
+        console.log('✅ 카테고리 데이터:', categoryData)
+        
+        // 카테고리 데이터 매핑
+        const mappedCategories = categoryData.map(cat => ({
+          id: cat.id,
+          name: cat.name,
+          level: cat.level,
+          parentId: cat.parent_id,
+          expanded: false,
+          children: []
+        }))
+        
+        // 계층 구조 구성
+        const rootCategories = []
+        const categoryMap = new Map()
+        
+        mappedCategories.forEach(cat => {
+          categoryMap.set(cat.id, { ...cat, children: [] })
+        })
+        
+        mappedCategories.forEach(cat => {
+          if (cat.parentId === null) {
+            rootCategories.push(categoryMap.get(cat.id))
+          } else {
+            const parent = categoryMap.get(cat.parentId)
+            if (parent) {
+              parent.children.push(categoryMap.get(cat.id))
+            }
+          }
+        })
+        
+        console.log('🌳 계층형 카테고리:', rootCategories)
+        hierarchicalCategories.value = rootCategories
+        
+      } else {
+        console.error('❌ 카테고리 에러:', categoryResponse.statusText)
+      }
+      
+    } else {
+      console.error('❌ API 응답 실패:', response.status, response.statusText)
+    }
+  } catch (error) {
+    console.error('💥 API 호출 에러:', error)
+  }
 })
 </script>
 

@@ -81,6 +81,39 @@
               
               <!-- 하위 카테고리들 (확장된 경우) -->
               <template v-if="category.expanded">
+                <!-- 1단계 카테고리에 직속으로 연결된 업무들 먼저 표시 -->
+                <template v-if="hasDirectWorksInCategory(category)">
+                  <template v-for="work in getWorksForCategory(category.id)" :key="work.id">
+                    <div 
+                      class="table-row work-row"
+                      @click="editWork(work)"
+                    >
+                      <div class="table-cell work-category">
+                        <span class="work-indent">　</span>
+                        <span class="work-indicator">┗</span>
+                      </div>
+                      <div class="table-cell">{{ work.name }}</div>
+                      <div class="table-cell">
+                        <span class="status-badge" :class="getStatusClass(work.status)">
+                          {{ work.status }}
+                        </span>
+                      </div>
+                      <div class="table-cell">{{ formatDate(work.startDate) }}</div>
+                      <div class="table-cell">{{ formatDate(work.endDate) }}</div>
+                      <div class="table-cell">
+                        <input 
+                          type="checkbox" 
+                          :checked="work.isMyWork" 
+                          class="my-work-checkbox readonly"
+                          readonly
+                          @click.prevent
+                        >
+                      </div>
+                    </div>
+                  </template>
+                </template>
+                
+                <!-- 그 다음 하위 카테고리들과 그들의 업무들 표시 -->
                 <template v-for="subCategory in category.children" :key="subCategory.id">
                   <template v-if="hasWorksInCategory(subCategory)">
                     <!-- 2단계 카테고리 -->
@@ -325,12 +358,24 @@
             </div>
             
             <div class="form-group">
+              <label>업무 내용</label>
+              <textarea 
+                v-model="currentWork.content" 
+                placeholder="업무 내용을 입력하세요"
+                class="form-textarea"
+                rows="4"
+              ></textarea>
+            </div>
+            
+            <div class="form-group">
               <label>상태</label>
               <select v-model="currentWork.status" class="form-select">
                 <option value="예정">예정</option>
                 <option value="진행중">진행중</option>
+                <option value="검토중">검토중</option>
+                <option value="반려">반려</option>
                 <option value="완료">완료</option>
-                <option value="보류">보류</option>
+                <option value="취소">취소</option>
               </select>
             </div>
             
@@ -674,10 +719,12 @@ const formatDate = (dateString) => {
 
 const getStatusClass = (status) => {
   switch (status) {
-    case '완료': return 'status-completed'
+    case '예정': return 'status-todo'
     case '진행중': return 'status-progress'
-    case '예정': return 'status-scheduled'
-    case '보류': return 'status-hold'
+    case '검토중': return 'status-review'
+    case '반려': return 'status-rejected'
+    case '완료': return 'status-completed'
+    case '취소': return 'status-cancelled'
     default: return 'status-default'
   }
 }
@@ -776,6 +823,7 @@ const nextWeek = () => {
 const addWork = () => {
   currentWork.value = {
     name: '',
+    content: '',
     categoryId: '',
     status: '예정',
     startDate: new Date().toISOString().split('T')[0],
@@ -801,39 +849,108 @@ const closeModal = () => {
   showWorkModal.value = false
   currentWork.value = {}
   isEditMode.value = false
+  selectedProjectForWork.value = null
+  projectSearchTerm.value = ''
 }
 
-const saveWork = () => {
+const saveWork = async () => {
   if (!currentWork.value.name.trim()) {
     alert('업무명을 입력해주세요.')
     return
   }
   
-  if (!currentWork.value.categoryId) {
+  const categoryId = isEditMode.value ? currentWork.value.categoryId : selectedProjectForWork.value?.id
+  if (!categoryId) {
     alert('프로젝트를 선택해주세요.')
     return
   }
   
-  if (isEditMode.value) {
-    // 수정 모드
-    const workIndex = todayWorks.value.findIndex(w => w.id === currentWork.value.id)
-    if (workIndex > -1) {
-      todayWorks.value[workIndex] = {
-        ...currentWork.value
+  try {
+    if (isEditMode.value) {
+      // 수정 모드 - PUT 요청
+      const updateData = {
+        title: currentWork.value.name,
+        content: currentWork.value.content || null,
+        user_id: 1, // 임시 사용자 ID
+        category_id: categoryId,
+        current_status: currentWork.value.status,
+        started_at: currentWork.value.startDate ? new Date(currentWork.value.startDate + 'T00:00:00').toISOString() : null,
+        deadline: currentWork.value.endDate ? new Date(currentWork.value.endDate + 'T23:59:59').toISOString() : null,
+        myjob: currentWork.value.isMyWork
+      }
+      
+      const response = await fetch(`http://127.0.0.1:8000/api/v1/work/${currentWork.value.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updateData)
+      })
+      
+      if (response.ok) {
+        // 로컬 데이터 업데이트
+        const workIndex = todayWorks.value.findIndex(w => w.id === currentWork.value.id)
+        if (workIndex > -1) {
+          todayWorks.value[workIndex] = {
+            ...currentWork.value,
+            categoryId: categoryId
+          }
+        }
+        console.log('✅ 업무 수정 성공')
+      } else {
+        console.error('❌ 업무 수정 실패:', response.statusText)
+        alert('업무 수정에 실패했습니다.')
+        return
+      }
+    } else {
+      // 새 업무 추가 - POST 요청
+      const newWorkData = {
+        title: currentWork.value.name,
+        content: currentWork.value.content || null,
+        user_id: 1, // 임시 사용자 ID
+        category_id: categoryId,
+        current_status: currentWork.value.status,
+        started_at: currentWork.value.startDate ? new Date(currentWork.value.startDate + 'T00:00:00').toISOString() : null,
+        deadline: currentWork.value.endDate ? new Date(currentWork.value.endDate + 'T23:59:59').toISOString() : null,
+        myjob: currentWork.value.isMyWork
+      }
+      
+      console.log('📡 새 업무 데이터:', newWorkData)
+      
+      const response = await fetch('http://127.0.0.1:8000/api/v1/work', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(newWorkData)
+      })
+      
+      if (response.ok) {
+        const createdWork = await response.json()
+        console.log('✅ 새 업무 생성 성공:', createdWork)
+        
+        // 로컬 데이터에 추가 (화면에서 바로 보이도록)
+        const newWork = {
+          id: createdWork.id,
+          name: currentWork.value.name,
+          content: currentWork.value.content,
+          categoryId: categoryId,
+          status: currentWork.value.status,
+          startDate: currentWork.value.startDate,
+          endDate: currentWork.value.endDate,
+          isMyWork: currentWork.value.isMyWork
+        }
+        todayWorks.value.push(newWork)
+      } else {
+        console.error('❌ 업무 생성 실패:', response.statusText)
+        alert('업무 생성에 실패했습니다.')
+        return
       }
     }
-  } else {
-    // 새 업무 추가
-    const newWork = {
-      id: Date.now(),
-      name: currentWork.value.name,
-      categoryId: currentWork.value.categoryId,
-      status: currentWork.value.status,
-      startDate: currentWork.value.startDate,
-      endDate: currentWork.value.endDate,
-      isMyWork: currentWork.value.isMyWork
-    }
-    todayWorks.value.push(newWork)
+  } catch (error) {
+    console.error('💥 API 호출 에러:', error)
+    alert('네트워크 오류가 발생했습니다.')
+    return
   }
   
   closeModal()
@@ -1360,10 +1477,13 @@ onMounted(async () => {
   color: white;
 }
 
-.status-completed { background: #48bb78; }
-.status-progress { background: #4299e1; }
-.status-scheduled { background: #ed8936; }
-.status-hold { background: #a0aec0; }
+.status-todo { background: #ed8936; }        /* 예정 - 주황색 */
+.status-progress { background: #4299e1; }    /* 진행중 - 파란색 */
+.status-review { background: #9f7aea; }      /* 검토중 - 보라색 */
+.status-rejected { background: #f56565; }    /* 반려 - 빨간색 */
+.status-completed { background: #48bb78; }   /* 완료 - 녹색 */
+.status-cancelled { background: #a0aec0; }   /* 취소 - 회색 */
+.status-default { background: #cbd5e0; }     /* 기본 - 연회색 */
 
 /* 빈 상태 */
 .empty-state {
@@ -1639,7 +1759,8 @@ onMounted(async () => {
 }
 
 .form-input,
-.form-select {
+.form-select,
+.form-textarea {
   width: 100%;
   padding: 0.75rem;
   border: 2px solid #e1e5e9;
@@ -1647,10 +1768,18 @@ onMounted(async () => {
   font-size: 0.9rem;
   transition: border-color 0.2s;
   box-sizing: border-box;
+  font-family: inherit;
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 100px;
+  line-height: 1.5;
 }
 
 .form-input:focus,
-.form-select:focus {
+.form-select:focus,
+.form-textarea:focus {
   outline: none;
   border-color: #667eea;
 }

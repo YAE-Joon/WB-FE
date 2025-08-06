@@ -276,149 +276,238 @@
     <!-- 업무 추가/수정 모달 -->
     <div v-if="showWorkModal" class="modal-overlay" @click="closeModal">
       <div class="modal-content" @click.stop>
+        <!-- 모달 헤더 -->
         <div class="modal-header">
-          <h3>{{ isEditMode ? '업무 수정' : '새 업무 추가' }}</h3>
-          <button @click="closeModal" class="close-btn">×</button>
+          <div class="modal-header-content">
+            <h3 class="modal-title">
+              <div class="title-icon">📋</div>
+              <span v-if="isDetailMode">업무 상세</span>
+              <span v-else>{{ isEditMode ? '업무 수정' : '새 업무 추가' }}</span>
+            </h3>
+            <button @click="closeModal" class="close-btn">×</button>
+          </div>
         </div>
         
+        <!-- 모달 바디 -->
         <div class="modal-body">
-          <!-- 1단계: 프로젝트 선택 (새 업무 추가일 때만) -->
-          <div v-if="!isEditMode" class="project-selection">
-            <label class="selection-label">
-              <span class="step-indicator">1</span>
-              프로젝트 선택 (필수)
-            </label>
-            
-            <!-- 검색 -->
-            <div class="search-container">
-              <input 
-                v-model="projectSearchTerm"
-                type="text" 
-                placeholder="프로젝트 검색..." 
-                class="search-input"
-              />
-            </div>
-            
-            <!-- 트리 컨테이너 -->
-            <div class="tree-container">
-              <template v-if="filteredCategories.length === 0">
-                <div class="empty-state">
-                  <p>프로젝트가 없습니다.</p>
+          <div v-if="isDetailMode" class="work-detail">
+            <!-- 프로젝트 계층 -->
+            <div class="detail-item">
+              <div class="detail-label">프로젝트</div>
+              <div class="project-hierarchy">
+                <div class="project-breadcrumb">
+                  <span class="project-item project-root">
+                    <span class="project-icon">🏗️</span>
+                    {{ getProjectHierarchy().root }}
+                  </span>
+                  <span v-if="getProjectHierarchy().sub" class="breadcrumb-separator">›</span>
+                  <span v-if="getProjectHierarchy().sub" class="project-item project-sub">
+                    <span class="project-icon">🎨</span>
+                    {{ getProjectHierarchy().sub }}
+                  </span>
+                  <span v-if="getProjectHierarchy().leaf" class="breadcrumb-separator">›</span>
+                  <span v-if="getProjectHierarchy().leaf" class="project-item project-leaf">
+                    <span class="project-icon">📱</span>
+                    {{ getProjectHierarchy().leaf }}
+                  </span>
                 </div>
-              </template>
-              <template v-else>
-                <TreeNode 
-                  v-for="category in filteredCategories" 
-                  :key="category.id"
-                  :node="category"
-                  :expanded-nodes="expandedProjectNodes"
-                  :selected-project="selectedProjectForWork"
-                  @toggle-expand="toggleProjectExpand"
-                  @select-project="selectProjectForWork"
-                />
-              </template>
-            </div>
-            
-            <!-- 선택된 프로젝트 표시 -->
-            <div v-if="selectedProjectForWork" class="selected-project-display">
-              <div class="selected-project-info">
-                <div class="selected-project-name">{{ selectedProjectForWork.name }}</div>
-                <div class="selected-project-path">{{ getSelectedProjectPath() }}</div>
               </div>
-              <button @click="clearProjectSelection" class="clear-selection-btn">×</button>
+            </div>
+            
+            <!-- 업무명 -->
+            <div class="detail-item">
+              <div class="detail-label">업무명</div>
+              <div class="work-title">{{ currentWork.name }}</div>
+            </div>
+            
+            <!-- 상태 -->
+            <div class="detail-item">
+              <div class="detail-label">상태</div>
+              <div class="detail-value">
+                <span class="status-badge" :class="getStatusClass(currentWork.status)">
+                  <span class="status-icon"></span>
+                  {{ currentWork.status }}
+                </span>
+              </div>
+            </div>
+            
+            <!-- 업무 내용 -->
+            <div class="detail-item">
+              <div class="detail-label">업무 내용</div>
+              <div class="content-box">
+                <div class="content-text">{{ currentWork.content || '내용이 없습니다.' }}</div>
+              </div>
+            </div>
+            
+            <!-- 날짜 정보 -->
+            <div class="detail-item">
+              <div class="detail-label">일정</div>
+              <div class="date-container">
+                <div class="date-item">
+                  <div class="detail-label">시작일</div>
+                  <div class="date-value">{{ formatDateKorean(currentWork.startDate) }}</div>
+                </div>
+                <div class="date-item">
+                  <div class="detail-label">마감일</div>
+                  <div class="date-value">{{ formatDateKorean(currentWork.endDate) }}</div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 담당자 -->
+            <div class="detail-item">
+              <div class="detail-label">담당</div>
+              <div class="detail-value">
+                <span class="my-work-indicator" :class="currentWork.isMyWork ? 'my-work-yes' : 'my-work-no'">
+                  <span class="indicator-dot"></span>
+                  {{ currentWork.isMyWork ? '내 업무' : '다른 사람 업무' }}
+                </span>
+              </div>
             </div>
           </div>
-
-          <!-- 수정 모드일 때는 기존 드롭다운 -->
-          <div v-if="isEditMode" class="form-group">
-            <label>프로젝트</label>
-            <select v-model="currentWork.categoryId" class="form-select">
-              <option value="">프로젝트를 선택하세요</option>
-              <template v-for="category in flattenedCategories" :key="category.id">
-                <option :value="category.id">
-                  {{ '　'.repeat(category.level) }}{{ category.name }}
-                </option>
-              </template>
-            </select>
-          </div>
-
-          <!-- 2단계: 업무 상세 정보 -->
-          <div class="work-details-form" :class="{ 'enabled': isEditMode || selectedProjectForWork }">
-            <div class="form-group">
-              <label>
-                <span v-if="!isEditMode" class="step-indicator">2</span>
-                업무명
+          
+          <!-- 편집/추가 폼은 기존 코드 유지 -->
+          <div v-else>
+            <!-- 1단계: 프로젝트 선택 (새 업무 추가일 때만) -->
+            <div v-if="!isEditMode" class="project-selection">
+              <label class="selection-label">
+                <span class="step-indicator">1</span>
+                프로젝트 선택 (필수)
               </label>
-              <input 
-                v-model="currentWork.name" 
-                type="text" 
-                placeholder="업무명을 입력하세요"
-                class="form-input"
-              >
+              
+              <!-- 검색 -->
+              <div class="search-container">
+                <input 
+                  v-model="projectSearchTerm"
+                  type="text" 
+                  placeholder="프로젝트 검색..." 
+                  class="search-input"
+                />
+              </div>
+              
+              <!-- 트리 컨테이너 -->
+              <div class="tree-container">
+                <template v-if="filteredCategories.length === 0">
+                  <div class="empty-state">
+                    <p>프로젝트가 없습니다.</p>
+                  </div>
+                </template>
+                <template v-else>
+                  <TreeNode 
+                    v-for="category in filteredCategories" 
+                    :key="category.id"
+                    :node="category"
+                    :expanded-nodes="expandedProjectNodes"
+                    :selected-project="selectedProjectForWork"
+                    @toggle-expand="toggleProjectExpand"
+                    @select-project="selectProjectForWork"
+                  />
+                </template>
+              </div>
+              
+              <!-- 선택된 프로젝트 표시 -->
+              <div v-if="selectedProjectForWork" class="selected-project-display">
+                <div class="selected-project-info">
+                  <div class="selected-project-name">{{ selectedProjectForWork.name }}</div>
+                  <div class="selected-project-path">{{ getSelectedProjectPath() }}</div>
+                </div>
+                <button @click="clearProjectSelection" class="clear-selection-btn">×</button>
+              </div>
             </div>
-            
-            <div class="form-group">
-              <label>업무 내용</label>
-              <textarea 
-                v-model="currentWork.content" 
-                placeholder="업무 내용을 입력하세요"
-                class="form-textarea"
-                rows="4"
-              ></textarea>
-            </div>
-            
-            <div class="form-group">
-              <label>상태</label>
-              <select v-model="currentWork.status" class="form-select">
-                <option value="예정">예정</option>
-                <option value="진행중">진행중</option>
-                <option value="검토중">검토중</option>
-                <option value="반려">반려</option>
-                <option value="완료">완료</option>
-                <option value="취소">취소</option>
+
+            <!-- 수정 모드일 때는 기존 드롭다운 -->
+            <div v-if="isEditMode" class="form-group">
+              <label>프로젝트</label>
+              <select v-model="currentWork.categoryId" class="form-select">
+                <option value="">프로젝트를 선택하세요</option>
+                <template v-for="category in flattenedCategories" :key="category.id">
+                  <option :value="category.id">
+                    {{ '　'.repeat(category.level) }}{{ category.name }}
+                  </option>
+                </template>
               </select>
             </div>
-            
-            <div class="form-group">
-              <label>시작일</label>
-              <input 
-                v-model="currentWork.startDate" 
-                type="date" 
-                class="form-input"
-              >
-            </div>
-            
-            <div class="form-group">
-              <label>마감일</label>
-              <input 
-                v-model="currentWork.endDate" 
-                type="date" 
-                class="form-input"
-              >
-            </div>
-            
-            <div class="form-group">
-              <label>내 업무</label>
-              <div class="checkbox-group">
-                <input 
-                  type="checkbox" 
-                  v-model="currentWork.isMyWork" 
-                  id="my-work-checkbox"
-                  class="form-checkbox"
-                >
-                <label for="my-work-checkbox" class="checkbox-label">
-                  내가 담당하는 업무입니다
+
+            <!-- 2단계: 업무 상세 정보 -->
+            <div class="work-details-form" :class="{ 'enabled': isEditMode || selectedProjectForWork }">
+              <div class="form-group">
+                <label>
+                  <span v-if="!isEditMode" class="step-indicator">2</span>
+                  업무명
                 </label>
+                <input 
+                  v-model="currentWork.name" 
+                  type="text" 
+                  placeholder="업무명을 입력하세요"
+                  class="form-input"
+                >
+              </div>
+              
+              <div class="form-group">
+                <label>업무 내용</label>
+                <textarea 
+                  v-model="currentWork.content" 
+                  placeholder="업무 내용을 입력하세요"
+                  class="form-textarea"
+                  rows="4"
+                ></textarea>
+              </div>
+              
+              <div class="form-group">
+                <label>상태</label>
+                <select v-model="currentWork.status" class="form-select">
+                  <option value="예정">예정</option>
+                  <option value="진행중">진행중</option>
+                  <option value="검토중">검토중</option>
+                  <option value="반려">반려</option>
+                  <option value="완료">완료</option>
+                  <option value="취소">취소</option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label>시작일</label>
+                <input 
+                  v-model="currentWork.startDate" 
+                  type="date" 
+                  class="form-input"
+                >
+              </div>
+              
+              <div class="form-group">
+                <label>마감일</label>
+                <input 
+                  v-model="currentWork.endDate" 
+                  type="date" 
+                  class="form-input"
+                >
+              </div>
+              
+              <div class="form-group">
+                <label>내 업무</label>
+                <div class="checkbox-group">
+                  <input 
+                    type="checkbox" 
+                    v-model="currentWork.isMyWork" 
+                    id="my-work-checkbox"
+                    class="form-checkbox"
+                  >
+                  <label for="my-work-checkbox" class="checkbox-label">
+                    내가 담당하는 업무입니다
+                  </label>
+                </div>
               </div>
             </div>
           </div>
         </div>
         
+        <!-- 모달 푸터 -->
         <div class="modal-footer">
-          <button v-if="isEditMode" @click="deleteWork" class="delete-btn">삭제</button>
+          <div></div>
           <div class="button-group">
-            <button @click="closeModal" class="cancel-btn">취소</button>
-            <button @click="saveWork" class="save-btn">저장</button>
+            <button @click="closeModal" class="btn btn-secondary">닫기</button>
+            <button v-if="isDetailMode" @click="editCurrentWork" class="btn btn-primary">편집</button>
+            <button v-else @click="saveWork" class="btn btn-primary">저장</button>
           </div>
         </div>
       </div>
@@ -438,6 +527,7 @@ const router = useRouter()
 // 상태 관리
 const showWorkModal = ref(false)
 const isEditMode = ref(false)
+const isDetailMode = ref(false)
 const currentWork = ref({})
 const currentWeek = ref(new Date())
 
@@ -836,7 +926,8 @@ const addWork = () => {
 
 const editWork = (work) => {
   currentWork.value = { ...work }
-  isEditMode.value = true
+  isEditMode.value = false
+  isDetailMode.value = true
   showWorkModal.value = true
 }
 
@@ -849,6 +940,7 @@ const closeModal = () => {
   showWorkModal.value = false
   currentWork.value = {}
   isEditMode.value = false
+  isDetailMode.value = false
   selectedProjectForWork.value = null
   projectSearchTerm.value = ''
 }
@@ -967,6 +1059,44 @@ const deleteWork = () => {
   closeModal()
 }
 
+// 젼직 버튼 클릭 시 편집 모드로 전환
+const editCurrentWork = () => {
+  isDetailMode.value = false
+  isEditMode.value = true
+}
+
+// 한국어 날짜 포맷팅
+const formatDateKorean = (dateString) => {
+  if (!dateString) return '미정'
+  const date = new Date(dateString)
+  return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`
+}
+
+// 프로젝트 계층 구조 파싱
+const getProjectHierarchy = () => {
+  if (!currentWork.value.categoryId) return { root: '', sub: '', leaf: '' }
+  
+  const findHierarchy = (categories, targetId, path = []) => {
+    for (const category of categories) {
+      const newPath = [...path, category.name]
+      if (category.id === targetId) {
+        return {
+          root: newPath[0] || '',
+          sub: newPath[1] || '',
+          leaf: newPath[2] || ''
+        }
+      }
+      if (category.children) {
+        const found = findHierarchy(category.children, targetId, newPath)
+        if (found) return found
+      }
+    }
+    return { root: '', sub: '', leaf: '' }
+  }
+  
+  return findHierarchy(hierarchicalCategories.value, currentWork.value.categoryId)
+}
+
 // 새로운 프로젝트 선택 관련 함수들
 const toggleProjectExpand = (nodeId) => {
   if (expandedProjectNodes.value.has(nodeId)) {
@@ -1028,6 +1158,7 @@ onMounted(async () => {
       const mappedWorks = data.map(work => ({
         id: work.id,
         name: work.title,
+        content: work.content,
         categoryId: work.category_id,
         status: work.current_status,
         startDate: work.started_at ? work.started_at.split('T')[0] : '',
@@ -1093,111 +1224,6 @@ onMounted(async () => {
 
 <style scoped>
 /* 새로운 프로젝트 선택 스타일 */
-.project-selection {
-  margin-bottom: 2rem;
-}
-
-.selection-label {
-  display: block;
-  margin-bottom: 1rem;
-  color: #333;
-  font-weight: 500;
-  font-size: 0.95rem;
-}
-
-.step-indicator {
-  background: #667eea;
-  color: white;
-  font-size: 0.8rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 12px;
-  margin-right: 0.5rem;
-}
-
-.search-container {
-  margin-bottom: 1rem;
-}
-
-.search-input {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  border: 2px solid #e1e5e9;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  transition: border-color 0.2s;
-  box-sizing: border-box;
-}
-
-.search-input:focus {
-  outline: none;
-  border-color: #667eea;
-}
-
-.tree-container {
-  border: 2px solid #e1e5e9;
-  border-radius: 8px;
-  max-height: 300px;
-  overflow-y: auto;
-  background: #fafbfc;
-}
-
-.selected-project-display {
-  margin-top: 1rem;
-  padding: 1rem;
-  background: #f0f4ff;
-  border: 1px solid #667eea;
-  border-radius: 8px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.selected-project-info {
-  flex: 1;
-}
-
-.selected-project-name {
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 0.25rem;
-}
-
-.selected-project-path {
-  font-size: 0.85rem;
-  color: #667eea;
-}
-
-.clear-selection-btn {
-  background: none;
-  border: none;
-  color: #ff6b6b;
-  cursor: pointer;
-  font-size: 1.2rem;
-  padding: 0.25rem;
-  border-radius: 4px;
-  transition: background 0.2s;
-}
-
-.clear-selection-btn:hover {
-  background: rgba(255, 107, 107, 0.1);
-}
-
-.work-details-form {
-  opacity: 0.5;
-  pointer-events: none;
-  transition: all 0.3s;
-}
-
-.work-details-form.enabled {
-  opacity: 1;
-  pointer-events: all;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 2rem;
-  color: #a0aec0;
-}
 
 /* 기존 스타일들 */
 .dashboard {
@@ -1689,64 +1715,114 @@ onMounted(async () => {
   color: #667eea;
 }
 
-/* 모달 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
+/* 프로젝트 선택 스타일 */
+.project-selection {
+  margin-bottom: 2rem;
 }
 
-.modal-content {
-  background: white;
+.selection-label {
+  display: block;
+  margin-bottom: 1rem;
+  color: #333;
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.step-indicator {
+  background: #667eea;
+  color: white;
+  font-size: 0.8rem;
+  padding: 0.25rem 0.5rem;
   border-radius: 12px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-  max-width: 500px;
-  width: 90%;
-  max-height: 90vh;
-  overflow-y: auto;
+  margin-right: 0.5rem;
 }
 
-.modal-header {
-  padding: 1.5rem 2rem 1rem;
-  border-bottom: 1px solid #e1e5e9;
+.search-container {
+  margin-bottom: 1rem;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 2px solid #e1e5e9;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.tree-container {
+  border: 2px solid #e1e5e9;
+  border-radius: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  background: #fafbfc;
+}
+
+.selected-project-display {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #f0f4ff;
+  border: 1px solid #667eea;
+  border-radius: 8px;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.modal-header h3 {
-  margin: 0;
-  color: #333;
-  font-size: 1.2rem;
-  font-weight: 600;
+.selected-project-info {
+  flex: 1;
 }
 
-.close-btn {
+.selected-project-name {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0.25rem;
+}
+
+.selected-project-path {
+  font-size: 0.85rem;
+  color: #667eea;
+}
+
+.clear-selection-btn {
   background: none;
   border: none;
-  font-size: 1.5rem;
+  color: #ff6b6b;
   cursor: pointer;
-  color: #666;
+  font-size: 1.2rem;
   padding: 0.25rem;
   border-radius: 4px;
   transition: background 0.2s;
 }
 
-.close-btn:hover {
-  background: #f1f3f4;
+.clear-selection-btn:hover {
+  background: rgba(255, 107, 107, 0.1);
 }
 
-.modal-body {
-  padding: 1.5rem 2rem;
+.work-details-form {
+  opacity: 0.5;
+  pointer-events: none;
+  transition: all 0.3s;
 }
 
+.work-details-form.enabled {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2rem;
+  color: #a0aec0;
+}
+
+/* 폼 스타일 */
 .form-group {
   margin-bottom: 1.5rem;
 }
@@ -1784,9 +1860,336 @@ onMounted(async () => {
   border-color: #667eea;
 }
 
+/* 상세보기 전용 스타일 */
+/* 모달 오버레이 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 모달 컨테이너 */
+.modal-content {
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+  max-width: 600px;
+  width: 90%;
+  max-height: 90vh;
+  overflow: hidden;
+  position: relative;
+  animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* 모달 헤더 */
+.modal-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 24px 32px;
+  position: relative;
+  overflow: hidden;
+}
+
+.modal-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url("data:image/svg+xml,%3csvg width='40' height='40' xmlns='http://www.w3.org/2000/svg'%3e%3cdefs%3e%3cpattern id='grid' width='40' height='40' patternUnits='userSpaceOnUse'%3e%3cpath d='M 40 0 L 0 0 0 40' fill='none' stroke='%23ffffff' stroke-width='0.5' opacity='0.1'/%3e%3c/pattern%3e%3c/defs%3e%3crect width='100%25' height='100%25' fill='url(%23grid)' /%3e%3c/svg%3e");
+  pointer-events: none;
+}
+
+.modal-header-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.title-icon {
+  width: 24px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+.close-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: white;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 20px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(10px);
+}
+
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+/* 모달 바디 */
+.modal-body {
+  padding: 32px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+/* 상세보기 스타일 */
+.work-detail {
+  display: grid;
+  gap: 24px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detail-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detail-value {
+  font-size: 1rem;
+  color: #1f2937;
+  line-height: 1.6;
+}
+
+.work-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 8px;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: white;
+  gap: 6px;
+}
+
+.status-progress { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+.status-todo { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.status-completed { background: linear-gradient(135deg, #10b981, #059669); }
+.status-review { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+.status-rejected { background: linear-gradient(135deg, #ef4444, #dc2626); }
+.status-cancelled { background: linear-gradient(135deg, #6b7280, #4b5563); }
+.status-default { background: linear-gradient(135deg, #9ca3af, #6b7280); }
+
+.status-icon {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.content-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+  border-left: 4px solid #667eea;
+  position: relative;
+  overflow: hidden;
+}
+
+.content-box::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, #667eea20, transparent);
+  border-radius: 0 12px 0 60px;
+}
+
+.content-text {
+  white-space: pre-wrap;
+  line-height: 1.7;
+  color: #374151;
+  position: relative;
+  z-index: 1;
+}
+
+.date-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.date-item {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  transition: all 0.2s ease;
+}
+
+.date-item:hover {
+  border-color: #667eea;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+}
+
+.date-value {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #111827;
+  margin-top: 4px;
+}
+
+.my-work-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.my-work-yes {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+.my-work-no {
+  background: #f3f4f6;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+}
+
+.indicator-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* 프로젝트 계층 스타일 */
+.project-hierarchy {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.project-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.project-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 12px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.project-root {
+  background: linear-gradient(135deg, #fef3c7, #fed7aa);
+  color: #92400e;
+  border: 1px solid #fbbf24;
+}
+
+.project-sub {
+  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+  color: #1d4ed8;
+  border: 1px solid #60a5fa;
+}
+
+.project-leaf {
+  background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+  color: #166534;
+  border: 1px solid #4ade80;
+}
+
+.project-icon {
+  font-size: 14px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+}
+
+.breadcrumb-separator {
+  color: #9ca3af;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+/* 모달 푸터 */
 .modal-footer {
-  padding: 1rem 2rem 1.5rem;
-  border-top: 1px solid #e1e5e9;
+  background: #f8fafc;
+  border-top: 1px solid #e5e7eb;
+  padding: 24px 32px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1794,50 +2197,121 @@ onMounted(async () => {
 
 .button-group {
   display: flex;
-  gap: 0.75rem;
+  gap: 12px;
 }
 
-.save-btn,
-.cancel-btn,
-.delete-btn {
-  padding: 0.75rem 1.5rem;
+.btn {
+  padding: 12px 24px;
   border: none;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  font-weight: 500;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 120px;
+  justify-content: center;
 }
 
-.save-btn {
-  background: #667eea;
+.btn-primary {
+  background: linear-gradient(135deg, #667eea, #764ba2);
   color: white;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
 
-.save-btn:hover {
-  background: #5a67d8;
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
 }
 
-.cancel-btn {
-  background: #f8f9fa;
-  color: #666;
-  border: 1px solid #e1e5e9;
+.btn-secondary {
+  background: white;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
 }
 
-.cancel-btn:hover {
-  background: #e9ecef;
+.btn-secondary:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+  transform: translateY(-1px);
 }
 
-.delete-btn {
-  background: #ff6b6b;
-  color: white;
+/* 스크롤바 스타일링 */
+.modal-body::-webkit-scrollbar {
+  width: 6px;
 }
 
-.delete-btn:hover {
-  background: #ff5252;
+.modal-body::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border-radius: 3px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #5a67d8, #6b46c1);
 }
 
 /* 반응형 */
+@media (max-width: 640px) {
+  .modal-content {
+    width: 95%;
+    margin: 10px;
+  }
+
+  .modal-header {
+    padding: 20px 24px;
+  }
+
+  .modal-body {
+    padding: 24px;
+  }
+
+  .modal-footer {
+    padding: 20px 24px;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .button-group {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .btn {
+    width: 100%;
+  }
+
+  .date-container {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-title {
+    font-size: 1.25rem;
+  }
+
+  .project-breadcrumb {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .breadcrumb-separator {
+    display: none;
+  }
+
+  .project-item {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+/* 기존 반응형 스타일 */
 @media (max-width: 768px) {
   .dashboard-main {
     padding: 1rem;

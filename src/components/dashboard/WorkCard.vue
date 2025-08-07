@@ -15,7 +15,7 @@
     <div class="work-content">
       <p v-if="work.content" class="work-description">{{ work.content }}</p>
       
-      <div class="work-meta">
+      <div class="work-meta">g
         <div class="work-dates">
           <span class="date-label">시작:</span>
           <span class="date-value">{{ formatDate(work.started_at) }}</span>

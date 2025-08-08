@@ -52,17 +52,39 @@
                 <template v-for="work in getWorksForTopCategory(category.id)" :key="work.id">
                   <div 
                     class="table-row work-row"
-                    @click="editWork(work)"
                   >
                     <div class="table-cell work-category">
                       <span class="work-indent">　</span>
                       <span class="work-indicator">┗</span>
                     </div>
-                    <div class="table-cell">{{ work.name }}</div>
-                    <div class="table-cell">
-                      <span class="status-badge" :class="getStatusClass(work.status)">
-                        {{ work.status }}
-                      </span>
+                    <div class="table-cell work-name-cell" @click="editWork(work)">
+                      {{ work.name }}
+                    </div>
+                    <div class="table-cell status-cell">
+                      <div class="status-dropdown-wrapper">
+                        <button 
+                          class="status-badge" 
+                          :class="[getStatusClass(work.status), { 'loading': work.statusLoading }]"
+                          @click.stop="toggleStatusDropdown(work.id)"
+                        >
+                          {{ work.statusLoading ? '변경중...' : work.status }}
+                        </button>
+                        <div 
+                          class="status-dropdown" 
+                          :class="{ 'show': openDropdownId === work.id }"
+                        >
+                          <div 
+                            v-for="status in statusOptions" 
+                            :key="status.value"
+                            class="dropdown-item"
+                            :class="{ 'selected': work.status === status.value }"
+                            @click="changeWorkStatus(work, status.value, status.class)"
+                          >
+                            <div class="status-dot" :class="status.class"></div>
+                            {{ status.value }}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                     <div class="table-cell">{{ formatDate(work.startDate) }}</div>
                     <div class="table-cell">{{ formatDate(work.endDate) }}</div>
@@ -86,18 +108,40 @@
                   <template v-for="work in getWorksForCategory(category.id)" :key="work.id">
                     <div 
                       class="table-row work-row"
-                      @click="editWork(work)"
                     >
                       <div class="table-cell work-category">
                         <span class="work-indent">　</span>
                         <span class="work-indicator">┗</span>
                       </div>
-                      <div class="table-cell">{{ work.name }}</div>
-                      <div class="table-cell">
-                        <span class="status-badge" :class="getStatusClass(work.status)">
-                          {{ work.status }}
-                        </span>
+                      <div class="table-cell work-name-cell" @click="editWork(work)">
+                        {{ work.name }}
                       </div>
+                      <div class="table-cell status-cell">
+                      <div class="status-dropdown-wrapper">
+                      <button 
+                          class="status-badge" 
+                            :class="[getStatusClass(work.status), { 'loading': work.statusLoading }]"
+                                  @click.stop="toggleStatusDropdown(work.id)"
+                                >
+                                  {{ work.statusLoading ? '변경중...' : work.status }}
+                                </button>
+                                <div 
+                                  class="status-dropdown" 
+                                  :class="{ 'show': openDropdownId === work.id }"
+                                >
+                                  <div 
+                                    v-for="status in statusOptions" 
+                                    :key="status.value"
+                                    class="dropdown-item"
+                                    :class="{ 'selected': work.status === status.value }"
+                                    @click="changeWorkStatus(work, status.value, status.class)"
+                                  >
+                                    <div class="status-dot" :class="status.class"></div>
+                                    {{ status.value }}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
                       <div class="table-cell">{{ formatDate(work.startDate) }}</div>
                       <div class="table-cell">{{ formatDate(work.endDate) }}</div>
                       <div class="table-cell">
@@ -133,18 +177,40 @@
                     <template v-if="hasDirectWorksInCategory(subCategory)">
                       <template v-for="work in getWorksForCategory(subCategory.id)" :key="work.id">
                         <div 
-                          class="table-row work-row"
-                          @click="editWork(work)"
+                        class="table-row work-row"
                         >
                           <div class="table-cell work-category">
-                            <span class="work-indent">　</span>
-                            <span class="work-indicator">┗</span>
-                          </div>
-                          <div class="table-cell">{{ work.name }}</div>
-                          <div class="table-cell">
-                            <span class="status-badge" :class="getStatusClass(work.status)">
-                              {{ work.status }}
-                            </span>
+                          <span class="work-indent">　</span>
+                        <span class="work-indicator">┗</span>
+                        </div>
+                        <div class="table-cell work-name-cell" @click="editWork(work)">
+                          {{ work.name }}
+                            </div>
+                          <div class="table-cell status-cell">
+                            <div class="status-dropdown-wrapper">
+                              <button 
+                                class="status-badge" 
+                                :class="[getStatusClass(work.status), { 'loading': work.statusLoading }]"
+                                @click.stop="toggleStatusDropdown(work.id)"
+                              >
+                                {{ work.statusLoading ? '변경중...' : work.status }}
+                              </button>
+                              <div 
+                                class="status-dropdown" 
+                                :class="{ 'show': openDropdownId === work.id }"
+                              >
+                                <div 
+                                  v-for="status in statusOptions" 
+                                  :key="status.value"
+                                  class="dropdown-item"
+                                  :class="{ 'selected': work.status === status.value }"
+                                  @click="changeWorkStatus(work, status.value, status.class)"
+                                >
+                                  <div class="status-dot" :class="status.class"></div>
+                                  {{ status.value }}
+                                </div>
+                              </div>
+                            </div>
                           </div>
                           <div class="table-cell">{{ formatDate(work.startDate) }}</div>
                           <div class="table-cell">{{ formatDate(work.endDate) }}</div>
@@ -182,17 +248,39 @@
                           <template v-for="work in getWorksForCategory(subSubCategory.id)" :key="work.id">
                             <div 
                               class="table-row work-row"
-                              @click="editWork(work)"
                             >
                               <div class="table-cell work-category">
                                 <span class="work-indent">　</span>
                                 <span class="work-indicator">┗</span>
                               </div>
-                              <div class="table-cell">{{ work.name }}</div>
-                              <div class="table-cell">
-                                <span class="status-badge" :class="getStatusClass(work.status)">
-                                  {{ work.status }}
-                                </span>
+                              <div class="table-cell work-name-cell" @click="editWork(work)">
+                                {{ work.name }}
+                              </div>
+                              <div class="table-cell status-cell">
+                                <div class="status-dropdown-wrapper">
+                                  <button 
+                                    class="status-badge" 
+                                    :class="[getStatusClass(work.status), { 'loading': work.statusLoading }]"
+                                    @click.stop="toggleStatusDropdown(work.id)"
+                                  >
+                                    {{ work.statusLoading ? '변경중...' : work.status }}
+                                  </button>
+                                  <div 
+                                    class="status-dropdown" 
+                                    :class="{ 'show': openDropdownId === work.id }"
+                                  >
+                                    <div 
+                                      v-for="status in statusOptions" 
+                                      :key="status.value"
+                                      class="dropdown-item"
+                                      :class="{ 'selected': work.status === status.value }"
+                                      @click="changeWorkStatus(work, status.value, status.class)"
+                                    >
+                                      <div class="status-dot" :class="status.class"></div>
+                                      {{ status.value }}
+                                    </div>
+                                  </div>
+                                </div>
                               </div>
                               <div class="table-cell">{{ formatDate(work.startDate) }}</div>
                               <div class="table-cell">{{ formatDate(work.endDate) }}</div>
@@ -324,7 +412,7 @@
             <div class="detail-item">
               <div class="detail-label">상태</div>
               <div class="detail-value">
-                <span class="status-badge" :class="getStatusClass(currentWork.status)">
+                <span class="status-badge modal-status-badge" :class="getStatusClass(currentWork.status)">
                   <span class="status-icon"></span>
                   {{ currentWork.status }}
                 </span>
@@ -535,6 +623,17 @@ const currentWeek = ref(new Date())
 const projectSearchTerm = ref('')
 const expandedProjectNodes = ref(new Set([1, 11]))
 const selectedProjectForWork = ref(null)
+
+// 상태 드롭다운 관련 변수들
+const openDropdownId = ref(null)
+const statusOptions = ref([
+  { value: '예정', class: 'todo' },
+  { value: '진행중', class: 'progress' },
+  { value: '검토중', class: 'review' },
+  { value: '반려', class: 'rejected' },
+  { value: '완료', class: 'completed' },
+  { value: '취소', class: 'cancelled' }
+])
 
 // 계층형 카테고리 데이터
 const hierarchicalCategories = ref([
@@ -805,6 +904,16 @@ const formatDate = (dateString) => {
   if (!dateString) return '-'
   const date = new Date(dateString)
   return `${date.getMonth() + 1}/${date.getDate()}`
+}
+
+// 랜덤 색상 생성 함수
+const generateRandomColor = () => {
+  const colors = [
+    '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+    '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
+    '#F8C471', '#82E0AA', '#F1948A', '#85C1E9', '#D7BDE2'
+  ]
+  return colors[Math.floor(Math.random() * colors.length)]
 }
 
 const getStatusClass = (status) => {
@@ -1137,6 +1246,116 @@ const flattenCategories = (categories, path = []) => {
   return result
 }
 
+// 상태 드롭다운 관련 함수들
+const toggleStatusDropdown = (workId) => {
+  if (openDropdownId.value === workId) {
+    openDropdownId.value = null
+  } else {
+    openDropdownId.value = workId
+    // 드롭다운 위치 조정을 위한 nextTick 사용
+    setTimeout(() => adjustDropdownPosition(workId), 10)
+  }
+}
+
+// 드롭다운 위치 자동 조정 (fixed position 버전)
+const adjustDropdownPosition = (workId) => {
+  const statusButton = document.querySelector(`[data-work-id="${workId}"] .status-badge`)
+  const dropdown = document.querySelector(`[data-work-id="${workId}"] .status-dropdown`)
+  
+  if (!statusButton || !dropdown) {
+    // fallback: workId로 찾기
+    const allDropdowns = document.querySelectorAll('.status-dropdown.show')
+    if (allDropdowns.length > 0) {
+      const activeDropdown = allDropdowns[0]
+      const activeButton = activeDropdown.parentElement.querySelector('.status-badge')
+      if (activeButton) {
+        positionDropdown(activeButton, activeDropdown)
+      }
+    }
+    return
+  }
+  
+  positionDropdown(statusButton, dropdown)
+}
+
+const positionDropdown = (button, dropdown) => {
+  const buttonRect = button.getBoundingClientRect()
+  const dropdownHeight = 240 // 예상 드롭다운 높이
+  const dropdownWidth = 140
+  
+  let top = buttonRect.bottom + 4
+  let left = buttonRect.left + (buttonRect.width / 2) - (dropdownWidth / 2)
+  
+  // 아래쪽 공간 부족 시 위로 표시
+  if (top + dropdownHeight > window.innerHeight - 20) {
+    top = buttonRect.top - dropdownHeight - 4
+  }
+  
+  // 왼쪽 경계 조정
+  if (left < 20) {
+    left = 20
+  }
+  
+  // 오른쪽 경계 조정
+  if (left + dropdownWidth > window.innerWidth - 20) {
+    left = window.innerWidth - dropdownWidth - 20
+  }
+  
+  dropdown.style.top = `${top}px`
+  dropdown.style.left = `${left}px`
+}
+
+const changeWorkStatus = async (work, newStatus, statusClass) => {
+  // 드롭다운 닫기
+  openDropdownId.value = null
+  
+  // 현재 상태와 같으면 리턴
+  if (work.status === newStatus) return
+  
+  // 로딩 상태 설정
+  work.statusLoading = true
+  
+  try {
+    // API 호출용 데이터 준비
+    const updateData = {
+      title: work.name,
+      content: work.content || null,
+      user_id: 1, // 임시 사용자 ID
+      category_id: work.categoryId,
+      current_status: newStatus,
+      started_at: work.startDate ? new Date(work.startDate + 'T00:00:00').toISOString() : null,
+      deadline: work.endDate ? new Date(work.endDate + 'T23:59:59').toISOString() : null,
+      myjob: work.isMyWork
+    }
+    
+    console.log(`📡 상태 변경 API 호출 - 업무 ID: ${work.id}, 새 상태: ${newStatus}`)
+    console.log('전송 데이터:', updateData)
+    
+    const response = await fetch(`http://127.0.0.1:8000/api/v1/work/work/${work.id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(updateData)
+    })
+    
+    if (response.ok) {
+      // 성공 시 로컬 상태 업데이트
+      work.status = newStatus
+      console.log(`✅ 상태 변경 성공: ${work.name} → ${newStatus}`)
+    } else {
+      console.error('❌ 상태 변경 실패:', response.statusText)
+      alert('상태 변경에 실패했습니다.')
+    }
+  } catch (error) {
+    console.error('💥 상태 변경 API 에러:', error)
+    alert('네트워크 오류가 발생했습니다.')
+  } finally {
+    // 로딩 상태 해제
+    work.statusLoading = false
+  }
+}
+
 const logout = () => {
   auth.logout()
   router.push('/')
@@ -1145,14 +1364,22 @@ const logout = () => {
 onMounted(async () => {
   console.log('대시보드 로드됨')
   
+  // 외부 클릭 시 드롭다운 닫기
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.status-dropdown-wrapper')) {
+      openDropdownId.value = null
+    }
+  })
+  
   try {
-    console.log('📡 API 호출 중...')
+    // 오늘의 업무 데이터 가져오기
+    console.log('📡 오늘의 업무 API 호출 중...')
     const response = await fetch('http://127.0.0.1:8000/api/v1/work/today')
     console.log('📨 응답 받음:', response.status, response.statusText)
     
     if (response.ok) {
       const data = await response.json()
-      console.log('✅ API 응답 데이터:', data)
+      console.log('✅ 오늘의 업무 API 응답 데이터:', data)
       
       // 데이터 매핑 및 화면 업데이트
       const mappedWorks = data.map(work => ({
@@ -1214,8 +1441,32 @@ onMounted(async () => {
       }
       
     } else {
-      console.error('❌ API 응답 실패:', response.status, response.statusText)
+      console.error('❌ 오늘의 업무 API 응답 실패:', response.status, response.statusText)
     }
+    
+    // 주간 테이블용 최상위 카테고리 가져오기
+    console.log('📡 주간 테이블용 최상위 카테고리 API 호출 중...')
+    const topCategoryResponse = await fetch('http://127.0.0.1:8000/api/v1/category/level0')
+    
+    if (topCategoryResponse.ok) {
+      const topCategoryData = await topCategoryResponse.json()
+      console.log('✅ 최상위 카테고리 API 응답:', topCategoryData)
+      
+      // 주간 테이블용 데이터 매핑
+      const mappedTopCategories = topCategoryData.map(cat => ({
+        id: cat.id,
+        name: cat.name,
+        color: cat.color || generateRandomColor() // 색상이 없으면 랜덤 색상 생성
+      }))
+      
+      console.log('🎨 매핑된 최상위 카테고리:', mappedTopCategories)
+      topCategories.value = mappedTopCategories // 주간 테이블 업데이트
+      
+    } else {
+      console.error('❌ 최상위 카테고리 API 에러:', topCategoryResponse.statusText)
+      // 실패 시 기본값 유지
+    }
+    
   } catch (error) {
     console.error('💥 API 호출 에러:', error)
   }
@@ -1229,6 +1480,7 @@ onMounted(async () => {
 .dashboard {
   min-height: 100vh;
   background: #f5f7fa;
+  overflow: visible; /* 전체 컨테이너도 visible로 설정 */
 }
 
 /* 헤더 */
@@ -1324,12 +1576,13 @@ onMounted(async () => {
   border-radius: 12px;
   padding: 1.5rem;
   box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  overflow: visible; /* 드롭다운이 잘리지 않도록 */
 }
 
 .work-table {
   border: 1px solid #e1e5e9;
   border-radius: 8px;
-  overflow: hidden;
+  overflow: visible; /* 기존 hidden에서 visible로 변경 */
 }
 
 .table-header {
@@ -1494,7 +1747,165 @@ onMounted(async () => {
   border-right: none;
 }
 
-/* 상태 배지 */
+.work-name-cell {
+  justify-content: flex-start !important;
+  text-align: left !important;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.work-name-cell:hover {
+  color: #667eea;
+  font-weight: 600;
+  background: rgba(102, 126, 234, 0.05);
+}
+
+/* 상태 드롭다운 스타일 */
+.status-cell {
+  position: relative;
+  padding: 0.5rem !important;
+}
+
+.status-dropdown-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.status-badge {
+  padding: 0.5rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  width: 100%;
+  text-align: center;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.status-badge:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+/* 삼각형 화살표 제거 */
+/* .status-badge::after {
+  content: '▼';
+  font-size: 0.7rem;
+  opacity: 0.7;
+} */
+
+.status-badge.loading {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.status-badge.loading::after {
+  content: '⟳';
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* 드롭다운 메뉴 - fixed position으로 변경 */
+.status-dropdown {
+  position: fixed;
+  background: white;
+  border: 1px solid #e1e5e9;
+  border-radius: 8px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+  z-index: 9999;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  min-width: 140px;
+  max-width: 200px;
+}
+
+.status-dropdown.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.dropdown-item {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  border-bottom: 1px solid #f1f3f4;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.dropdown-item:hover {
+  background: #f8f9ff;
+}
+
+.dropdown-item.selected {
+  background: #667eea;
+  color: white;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-dot.todo { background: #ed8936; }
+.status-dot.progress { background: #4299e1; }
+.status-dot.review { background: #9f7aea; }
+.status-dot.rejected { background: #f56565; }
+.status-dot.completed { background: #48bb78; }
+/* 모달 전용 상태 배지 - 테이블 상태와 분리 */
+.modal-status-badge {
+  padding: 6px 16px !important;
+  border-radius: 20px !important;
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  color: white !important;
+  cursor: default !important; /* 클릭 불가능 */
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  width: auto !important; /* 전체 너비 사용 안함 */
+  text-align: center !important;
+  justify-content: center !important;
+  border: none !important;
+  transform: none !important; /* 호버 효과 제거 */
+  box-shadow: none !important; /* 호버 그림자 제거 */
+}
+
+.modal-status-badge:hover {
+  transform: none !important; /* 호버 시 변화 없음 */
+  box-shadow: none !important;
+  cursor: default !important;
+}
+
+.modal-status-badge::after {
+  display: none !important; /* 화살표 숨김 */
+}
+
+.modal-status-badge.loading::after {
+  display: none !important; /* 로딩 아이콘도 숨김 */
+}
+
+/* 테이블용 상태 배지는 기존 스타일 유지 */
 .status-badge {
   padding: 0.25rem 0.75rem;
   border-radius: 20px;
@@ -1503,13 +1914,13 @@ onMounted(async () => {
   color: white;
 }
 
-.status-todo { background: #ed8936; }        /* 예정 - 주황색 */
-.status-progress { background: #4299e1; }    /* 진행중 - 파란색 */
-.status-review { background: #9f7aea; }      /* 검토중 - 보라색 */
-.status-rejected { background: #f56565; }    /* 반려 - 빨간색 */
-.status-completed { background: #48bb78; }   /* 완료 - 녹색 */
-.status-cancelled { background: #a0aec0; }   /* 취소 - 회색 */
-.status-default { background: #cbd5e0; }     /* 기본 - 연회색 */
+.status-todo { background: linear-gradient(135deg, #ed8936, #dd6b20); }        /* 예정 - 주황색 */
+.status-progress { background: linear-gradient(135deg, #4299e1, #3182ce); }    /* 진행중 - 파란색 */
+.status-review { background: linear-gradient(135deg, #9f7aea, #805ad5); }      /* 검토중 - 보라색 */
+.status-rejected { background: linear-gradient(135deg, #f56565, #e53e3e); }    /* 반려 - 빨간색 */
+.status-completed { background: linear-gradient(135deg, #48bb78, #38a169); }   /* 완료 - 녹색 */
+.status-cancelled { background: linear-gradient(135deg, #a0aec0, #718096); }   /* 취소 - 회색 */
+.status-default { background: linear-gradient(135deg, #cbd5e0, #a0aec0); }     /* 기본 - 연회색 */
 
 /* 빈 상태 */
 .empty-state {
@@ -2255,6 +2666,15 @@ onMounted(async () => {
 
 .modal-body::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(135deg, #5a67d8, #6b46c1);
+}
+
+/* 반응형 전 추가 설정 */
+.dashboard {
+  overflow: visible !important;
+}
+
+.dashboard-main {
+  overflow: visible !important;
 }
 
 /* 반응형 */

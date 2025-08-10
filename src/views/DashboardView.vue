@@ -32,7 +32,7 @@
           </div>
           
           <!-- 업무 목록 (계층형) -->
-          <template v-for="category in hierarchicalCategories" :key="category.id">
+          <template v-for="category in todayCategoryHierarchy" :key="category.id">
             <!-- 최상위 카테고리 (업무가 있는 경우만 표시) -->
             <template v-if="hasWorksInCategory(category)">
               <div class="category-row top-level" @click="toggleCategory(category.id)">
@@ -52,6 +52,7 @@
                 <template v-for="work in getWorksForTopCategory(category.id)" :key="work.id">
                   <div 
                     class="table-row work-row"
+                    :class="getDeadlineStatus(work)"
                   >
                     <div class="table-cell work-category">
                       <span class="work-indent">　</span>
@@ -105,18 +106,27 @@
               <template v-if="category.expanded">
                 <!-- 1단계 카테고리에 직속으로 연결된 업무들 먼저 표시 -->
                 <template v-if="hasDirectWorksInCategory(category)">
-                  <template v-for="work in getWorksForCategory(category.id)" :key="work.id">
-                    <div 
-                      class="table-row work-row"
-                    >
+                  <draggable
+                    v-model="getCategoryWorks(category.id).value"
+                    group="works"
+                    @change="updateWorkOrder"
+                    item-key="id"
+                    tag="div"
+                    :filter="'.no-drag'"
+                  >
+                    <template #item="{ element: work }">
+                      <div 
+                        class="table-row work-row draggable-item"
+                        :class="getDeadlineStatus(work)"
+                      >
                       <div class="table-cell work-category">
                         <span class="work-indent">　</span>
                         <span class="work-indicator">┗</span>
                       </div>
-                      <div class="table-cell work-name-cell" @click="editWork(work)">
+                      <div class="table-cell work-name-cell no-drag" @click="editWork(work)">
                         {{ work.name }}
                       </div>
-                      <div class="table-cell status-cell">
+                      <div class="table-cell status-cell no-drag">
                       <div class="status-dropdown-wrapper">
                       <button 
                           class="status-badge" 
@@ -154,7 +164,8 @@
                         >
                       </div>
                     </div>
-                  </template>
+                    </template>
+                  </draggable>
                 </template>
                 
                 <!-- 그 다음 하위 카테고리들과 그들의 업무들 표시 -->
@@ -175,56 +186,66 @@
                     
                     <!-- 2단계에 직속 업무가 있으면 표시 -->
                     <template v-if="hasDirectWorksInCategory(subCategory)">
-                      <template v-for="work in getWorksForCategory(subCategory.id)" :key="work.id">
-                        <div 
-                        class="table-row work-row"
-                        >
-                          <div class="table-cell work-category">
-                          <span class="work-indent">　</span>
-                        <span class="work-indicator">┗</span>
-                        </div>
-                        <div class="table-cell work-name-cell" @click="editWork(work)">
-                          {{ work.name }}
-                            </div>
-                          <div class="table-cell status-cell">
-                            <div class="status-dropdown-wrapper">
-                              <button 
-                                class="status-badge" 
-                                :class="[getStatusClass(work.status), { 'loading': work.statusLoading }]"
-                                @click.stop="toggleStatusDropdown(work.id)"
-                              >
-                                {{ work.statusLoading ? '변경중...' : work.status }}
-                              </button>
-                              <div 
-                                class="status-dropdown" 
-                                :class="{ 'show': openDropdownId === work.id }"
-                              >
-                                <div 
-                                  v-for="status in statusOptions" 
-                                  :key="status.value"
-                                  class="dropdown-item"
-                                  :class="{ 'selected': work.status === status.value }"
-                                  @click="changeWorkStatus(work, status.value, status.class)"
+                      <draggable
+                        v-model="getCategoryWorks(subCategory.id).value"
+                        group="works"
+                        @change="updateWorkOrder"
+                        item-key="id"
+                        tag="div"
+                        :filter="'.no-drag'"
+                      >
+                        <template #item="{ element: work }">
+                          <div 
+                          class="table-row work-row draggable-item"
+                          :class="getDeadlineStatus(work)"
+                          >
+                            <div class="table-cell work-category">
+                            <span class="work-indent">　</span>
+                          <span class="work-indicator">┗</span>
+                          </div>
+                          <div class="table-cell work-name-cell no-drag" @click="editWork(work)">
+                            {{ work.name }}
+                              </div>
+                            <div class="table-cell status-cell no-drag">
+                              <div class="status-dropdown-wrapper">
+                                <button 
+                                  class="status-badge" 
+                                  :class="[getStatusClass(work.status), { 'loading': work.statusLoading }]"
+                                  @click.stop="toggleStatusDropdown(work.id)"
                                 >
-                                  <div class="status-dot" :class="status.class"></div>
-                                  {{ status.value }}
+                                  {{ work.statusLoading ? '변경중...' : work.status }}
+                                </button>
+                                <div 
+                                  class="status-dropdown" 
+                                  :class="{ 'show': openDropdownId === work.id }"
+                                >
+                                  <div 
+                                    v-for="status in statusOptions" 
+                                    :key="status.value"
+                                    class="dropdown-item"
+                                    :class="{ 'selected': work.status === status.value }"
+                                    @click="changeWorkStatus(work, status.value, status.class)"
+                                  >
+                                    <div class="status-dot" :class="status.class"></div>
+                                    {{ status.value }}
+                                  </div>
                                 </div>
                               </div>
                             </div>
+                            <div class="table-cell">{{ formatDate(work.startDate) }}</div>
+                            <div class="table-cell">{{ formatDate(work.endDate) }}</div>
+                            <div class="table-cell">
+                              <input 
+                                type="checkbox" 
+                                :checked="work.isMyWork" 
+                                class="my-work-checkbox readonly"
+                                readonly
+                                @click.prevent
+                              >
+                            </div>
                           </div>
-                          <div class="table-cell">{{ formatDate(work.startDate) }}</div>
-                          <div class="table-cell">{{ formatDate(work.endDate) }}</div>
-                          <div class="table-cell">
-                            <input 
-                              type="checkbox" 
-                              :checked="work.isMyWork" 
-                              class="my-work-checkbox readonly"
-                              readonly
-                              @click.prevent
-                            >
-                          </div>
-                        </div>
-                      </template>
+                        </template>
+                      </draggable>
                     </template>
                     
                     <!-- 3단계 카테고리들 (2단계에 직속 업무가 없거나 확장된 경우) -->
@@ -245,56 +266,66 @@
                           </div>
                           
                           <!-- 해당 카테고리의 업무들 -->
-                          <template v-for="work in getWorksForCategory(subSubCategory.id)" :key="work.id">
-                            <div 
-                              class="table-row work-row"
-                            >
-                              <div class="table-cell work-category">
-                                <span class="work-indent">　</span>
-                                <span class="work-indicator">┗</span>
-                              </div>
-                              <div class="table-cell work-name-cell" @click="editWork(work)">
-                                {{ work.name }}
-                              </div>
-                              <div class="table-cell status-cell">
-                                <div class="status-dropdown-wrapper">
-                                  <button 
-                                    class="status-badge" 
-                                    :class="[getStatusClass(work.status), { 'loading': work.statusLoading }]"
-                                    @click.stop="toggleStatusDropdown(work.id)"
-                                  >
-                                    {{ work.statusLoading ? '변경중...' : work.status }}
-                                  </button>
-                                  <div 
-                                    class="status-dropdown" 
-                                    :class="{ 'show': openDropdownId === work.id }"
-                                  >
-                                    <div 
-                                      v-for="status in statusOptions" 
-                                      :key="status.value"
-                                      class="dropdown-item"
-                                      :class="{ 'selected': work.status === status.value }"
-                                      @click="changeWorkStatus(work, status.value, status.class)"
+                          <draggable
+                            v-model="getCategoryWorks(subSubCategory.id).value"
+                            group="works"
+                            @change="updateWorkOrder"
+                            item-key="id"
+                            tag="div"
+                            :filter="'.no-drag'"
+                          >
+                            <template #item="{ element: work }">
+                              <div 
+                                class="table-row work-row draggable-item"
+                                :class="getDeadlineStatus(work)"
+                              >
+                                <div class="table-cell work-category">
+                                  <span class="work-indent">　</span>
+                                  <span class="work-indicator">┗</span>
+                                </div>
+                                <div class="table-cell work-name-cell no-drag" @click="editWork(work)">
+                                  {{ work.name }}
+                                </div>
+                                <div class="table-cell status-cell no-drag">
+                                  <div class="status-dropdown-wrapper">
+                                    <button 
+                                      class="status-badge" 
+                                      :class="[getStatusClass(work.status), { 'loading': work.statusLoading }]"
+                                      @click.stop="toggleStatusDropdown(work.id)"
                                     >
-                                      <div class="status-dot" :class="status.class"></div>
-                                      {{ status.value }}
+                                      {{ work.statusLoading ? '변경중...' : work.status }}
+                                    </button>
+                                    <div 
+                                      class="status-dropdown" 
+                                      :class="{ 'show': openDropdownId === work.id }"
+                                    >
+                                      <div 
+                                        v-for="status in statusOptions" 
+                                        :key="status.value"
+                                        class="dropdown-item"
+                                        :class="{ 'selected': work.status === status.value }"
+                                        @click="changeWorkStatus(work, status.value, status.class)"
+                                      >
+                                        <div class="status-dot" :class="status.class"></div>
+                                        {{ status.value }}
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
+                                <div class="table-cell">{{ formatDate(work.startDate) }}</div>
+                                <div class="table-cell">{{ formatDate(work.endDate) }}</div>
+                                <div class="table-cell">
+                                  <input 
+                                    type="checkbox" 
+                                    :checked="work.isMyWork" 
+                                    class="my-work-checkbox readonly"
+                                    readonly
+                                    @click.prevent
+                                  >
+                                </div>
                               </div>
-                              <div class="table-cell">{{ formatDate(work.startDate) }}</div>
-                              <div class="table-cell">{{ formatDate(work.endDate) }}</div>
-                              <div class="table-cell">
-                                <input 
-                                  type="checkbox" 
-                                  :checked="work.isMyWork" 
-                                  class="my-work-checkbox readonly"
-                                  readonly
-                                  @click.prevent
-                                >
-                              </div>
-                            </div>
-                          </template>
+                            </template>
+                          </draggable>
                         </template>
                       </template>
                     </template>
@@ -305,7 +336,7 @@
           </template>
           
           <!-- 빈 상태 -->
-          <div v-if="todayWorks.length === 0" class="empty-state">
+          <div v-if="activeTodayWorks.length === 0" class="empty-state">
             <p>오늘 진행할 업무가 없습니다.</p>
             <button @click="addWork" class="add-first-btn">첫 업무 추가하기</button>
           </div>
@@ -354,7 +385,18 @@
               :class="{ 'today': day.isToday }"
               @click="addWorkToCell(category.id, day.date)"
             >
-              <!-- 업무가 있으면 표시, 없으면 빈 칸 -->
+              <!-- 완료된 업무들 표시 -->
+              <div 
+                v-for="work in getCompletedWorksForCell(category.id, day.fullDate)"
+                :key="work.id"
+                class="completed-work-tag"
+                :title="`${work.title}${work.content ? ' - ' + work.content : ''}`"
+                :style="{ backgroundColor: getWorkTagColor(work) }"
+                @click.stop="viewCompletedWorkDetail(work)"
+              >
+                <span class="work-tag-text">{{ truncateText(work.title, 15) }}</span>
+                <span class="work-tag-time">완료</span>
+              </div>
             </div>
           </div>
         </div>
@@ -435,8 +477,12 @@
                   <div class="detail-label">시작일</div>
                   <div class="date-value">{{ formatDateKorean(currentWork.startDate) }}</div>
                 </div>
-                <div class="date-item">
+                <div v-if="currentWork.status !== '완료'" class="date-item">
                   <div class="detail-label">마감일</div>
+                  <div class="date-value">{{ formatDateKorean(currentWork.endDate) }}</div>
+                </div>
+                <div v-if="currentWork.status === '완료'" class="date-item">
+                  <div class="detail-label">완료일</div>
                   <div class="date-value">{{ formatDateKorean(currentWork.endDate) }}</div>
                 </div>
               </div>
@@ -456,10 +502,10 @@
           
           <!-- 편집/추가 폼은 기존 코드 유지 -->
           <div v-else>
-            <!-- 1단계: 프로젝트 선택 (새 업무 추가일 때만) -->
-            <div v-if="!isEditMode" class="project-selection">
+            <!-- 프로젝트 선택 (추가/편집 모드 공통) -->
+            <div class="project-selection">
               <label class="selection-label">
-                <span class="step-indicator">1</span>
+                <span v-if="!isEditMode" class="step-indicator">1</span>
                 프로젝트 선택 (필수)
               </label>
               
@@ -503,19 +549,6 @@
               </div>
             </div>
 
-            <!-- 수정 모드일 때는 기존 드롭다운 -->
-            <div v-if="isEditMode" class="form-group">
-              <label>프로젝트</label>
-              <select v-model="currentWork.categoryId" class="form-select">
-                <option value="">프로젝트를 선택하세요</option>
-                <template v-for="category in flattenedCategories" :key="category.id">
-                  <option :value="category.id">
-                    {{ '　'.repeat(category.level) }}{{ category.name }}
-                  </option>
-                </template>
-              </select>
-            </div>
-
             <!-- 2단계: 업무 상세 정보 -->
             <div class="work-details-form" :class="{ 'enabled': isEditMode || selectedProjectForWork }">
               <div class="form-group">
@@ -543,7 +576,12 @@
               
               <div class="form-group">
                 <label>상태</label>
-                <select v-model="currentWork.status" class="form-select">
+                <select 
+                  v-model="currentWork.status" 
+                  class="form-select"
+                  :disabled="currentWork.status === '완료'"
+                  :class="{ 'disabled': currentWork.status === '완료' }"
+                >
                   <option value="예정">예정</option>
                   <option value="진행중">진행중</option>
                   <option value="검토중">검토중</option>
@@ -551,6 +589,9 @@
                   <option value="완료">완료</option>
                   <option value="취소">취소</option>
                 </select>
+                <div v-if="currentWork.status === '완료'" class="status-notice">
+                  완료된 업무의 상태는 변경할 수 없습니다.
+                </div>
               </div>
               
               <div class="form-group">
@@ -562,13 +603,27 @@
                 >
               </div>
               
-              <div class="form-group">
+              <div v-if="currentWork.status !== '완료'" class="form-group">
                 <label>마감일</label>
                 <input 
                   v-model="currentWork.endDate" 
                   type="date" 
                   class="form-input"
                 >
+              </div>
+              
+              <div v-if="currentWork.status === '완료'" class="form-group">
+                <label>완료일</label>
+                <input 
+                  :value="currentWork.endDate" 
+                  type="date" 
+                  class="form-input"
+                  disabled
+                  readonly
+                >
+                <div class="completion-notice">
+                  완료일은 변경할 수 없습니다.
+                </div>
               </div>
               
               <div class="form-group">
@@ -608,6 +663,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { useRouter } from 'vue-router'
 import TreeNode from '../components/TreeNode.vue'
+import draggable from 'vuedraggable'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -621,7 +677,7 @@ const currentWeek = ref(new Date())
 
 // 새로운 프로젝트 선택 관련 변수들
 const projectSearchTerm = ref('')
-const expandedProjectNodes = ref(new Set([1, 11]))
+const expandedProjectNodes = ref(new Set())
 const selectedProjectForWork = ref(null)
 
 // 상태 드롭다운 관련 변수들
@@ -635,111 +691,17 @@ const statusOptions = ref([
   { value: '취소', class: 'cancelled' }
 ])
 
-// 계층형 카테고리 데이터
-const hierarchicalCategories = ref([
-  {
-    id: 1,
-    name: '웹사이트 리뉴얼',
-    expanded: false,
-    level: 0,
-    children: [
-      {
-        id: 11,
-        name: 'UI/UX 디자인',
-        expanded: false,
-        level: 1,
-        parentId: 1,
-        children: [
-          { id: 111, name: '메인 페이지', expanded: false, level: 2, parentId: 11, children: [] },
-          { id: 112, name: '상품 페이지', expanded: false, level: 2, parentId: 11, children: [] },
-          { id: 113, name: '결제 페이지', expanded: false, level: 2, parentId: 11, children: [] }
-        ]
-      },
-      {
-        id: 12,
-        name: '프론트엔드 개발',
-        expanded: false,
-        level: 1,
-        parentId: 1,
-        children: [
-          { id: 121, name: 'React 컴포넌트', expanded: false, level: 2, parentId: 12, children: [] },
-          { id: 122, name: 'API 연동', expanded: false, level: 2, parentId: 12, children: [] }
-        ]
-      },
-      {
-        id: 13,
-        name: '백엔드 개발',
-        expanded: false,
-        level: 1,
-        parentId: 1,
-        children: [
-          { id: 131, name: 'API 설계', expanded: false, level: 2, parentId: 13, children: [] },
-          { id: 132, name: '데이터베이스', expanded: false, level: 2, parentId: 13, children: [] }
-        ]
-      }
-    ]
-  },
-  {
-    id: 2,
-    name: '모바일 앱 개발',
-    expanded: false,
-    level: 0,
-    children: [
-      {
-        id: 21,
-        name: 'iOS 앱',
-        expanded: false,
-        level: 1,
-        parentId: 2,
-        children: [
-          { id: 211, name: 'Swift UI', expanded: false, level: 2, parentId: 21, children: [] },
-          { id: 212, name: '앱스토어 배포', expanded: false, level: 2, parentId: 21, children: [] }
-        ]
-      },
-      {
-        id: 22,
-        name: 'Android 앱',
-        expanded: false,
-        level: 1,
-        parentId: 2,
-        children: [
-          { id: 221, name: 'Kotlin 개발', expanded: false, level: 2, parentId: 22, children: [] },
-          { id: 222, name: '플레이스토어 배포', expanded: false, level: 2, parentId: 22, children: [] }
-        ]
-      }
-    ]
-  },
-  {
-    id: 3,
-    name: '마케팅 캠페인',
-    expanded: false,
-    level: 0,
-    children: [
-      {
-        id: 31,
-        name: '디지털 마케팅',
-        expanded: false,
-        level: 1,
-        parentId: 3,
-        children: [
-          { id: 311, name: 'SNS 광고', expanded: false, level: 2, parentId: 31, children: [] },
-          { id: 312, name: '검색 광고', expanded: false, level: 2, parentId: 31, children: [] }
-        ]
-      },
-      {
-        id: 32,
-        name: '콘텐츠 제작',
-        expanded: false,
-        level: 1,
-        parentId: 3,
-        children: [
-          { id: 321, name: '블로그 포스팅', expanded: false, level: 2, parentId: 32, children: [] },
-          { id: 322, name: '동영상 제작', expanded: false, level: 2, parentId: 32, children: [] }
-        ]
-      }
-    ]
-  }
-])
+// 계층형 카테고리 데이터 (동적 로딩 - 업무 추가용)
+const hierarchicalCategories = ref([])
+const categoryLoadingStates = ref(new Map()) // 로딩 상태 추적
+
+// 오늘의 업무 섹션용 카테고리 계층 (업무 데이터로부터 생성)
+const todayCategoryHierarchy = ref([])
+
+// 완료되지 않은 오늘의 업무만 필터링
+const activeTodayWorks = computed(() => {
+  return todayWorks.value.filter(work => work.status !== '완료')
+})
 
 // 오늘의 업무 데이터 (실제 위치에 배치)
 const todayWorks = ref([
@@ -791,13 +753,10 @@ const todayWorks = ref([
 ])
 
 // 상위 카테고리 데이터 (주간 테이블용)
-const topCategories = ref([
-  { id: 1, name: '웹사이트 리뉴얼', color: '#FF6B6B' },
-  { id: 2, name: '모바일 앱 개발', color: '#4ECDC4' },
-  { id: 3, name: '마케팅 캠페인', color: '#45B7D1' },
-  { id: 4, name: '데이터 분석', color: '#96CEB4' },
-  { id: 5, name: '운영 관리', color: '#FFEAA7' }
-])
+const topCategories = ref([])
+
+// 주간 완료 업무 데이터
+const weeklyEndWorks = ref([])
 
 // 평면화된 카테고리 목록 (모달 드롭다운용)
 const flattenedCategories = computed(() => {
@@ -854,51 +813,64 @@ const filteredCategories = computed(() => {
   return filterTree(hierarchicalCategories.value)
 })
 
+// 주간 계산: 월요일~일요일 기준 (8/10 일요일 → 8/4~8/10 주간)
+const getKoreanMonday = (date) => {
+  const d = new Date(date)
+  const day = d.getDay()
+  
+  // 직접 날짜를 계산하여 확인
+  
+  // 일요일이면 6일 전이 월요일
+  const monday = new Date(d)
+  if (day === 0) {
+    // 일요일: 6일 전
+    monday.setDate(d.getDate() - 6)
+  } else {
+    // 다른 요일: (요일-1)일 전
+    monday.setDate(d.getDate() - (day - 1))
+  }
+  
+  
+  return monday
+}
+
 // 현재 주 제목
 const currentWeekTitle = computed(() => {
-  const startOfWeek = getWeekStart(currentWeek.value)
-  const endOfWeek = new Date(startOfWeek)
-  endOfWeek.setDate(startOfWeek.getDate() + 6)
+  const monday = getKoreanMonday(currentWeek.value)
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
   
-  const startMonth = startOfWeek.getMonth() + 1
-  const startDay = startOfWeek.getDate()
-  const endMonth = endOfWeek.getMonth() + 1
-  const endDay = endOfWeek.getDate()
+  const startMonth = monday.getMonth() + 1
+  const startDay = monday.getDate()
+  const endMonth = sunday.getMonth() + 1
+  const endDay = sunday.getDate()
   
   return `${startMonth}/${startDay} - ${endMonth}/${endDay}`
 })
 
-// 주간 날짜들
+// 주간 날짜들 (월요일부터 일요일까지)
 const weekDays = computed(() => {
-  const startOfWeek = getWeekStart(currentWeek.value)
+  const monday = getKoreanMonday(currentWeek.value)
   const days = []
   const today = new Date()
   const weekdays = ['월', '화', '수', '목', '금', '토', '일']
   
   for (let i = 0; i < 7; i++) {
-    const date = new Date(startOfWeek)
-    date.setDate(startOfWeek.getDate() + i)
+    const date = new Date(monday)
+    date.setDate(monday.getDate() + i)
     
-    days.push({
+    const dayData = {
       date: `${date.getMonth() + 1}/${date.getDate()}`,
       dayName: weekdays[i],
       fullDate: date.toISOString().split('T')[0],
       isToday: date.toDateString() === today.toDateString()
-    })
+    }
+    
+    days.push(dayData)
   }
   
   return days
 })
-
-// 유틸리티 함수
-const getWeekStart = (date) => {
-  const d = new Date(date)
-  const day = d.getDay()
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1)
-  const result = new Date(d.setDate(diff))
-  result.setHours(0, 0, 0, 0)
-  return result
-}
 
 const formatDate = (dateString) => {
   if (!dateString) return '-'
@@ -906,14 +878,91 @@ const formatDate = (dateString) => {
   return `${date.getMonth() + 1}/${date.getDate()}`
 }
 
-// 랜덤 색상 생성 함수
-const generateRandomColor = () => {
+// 날짜 비교를 위한 포맷팅 함수 (YYYY-MM-DD)
+const formatDateForComparison = (dateString) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  return date.toISOString().split('T')[0]
+}
+
+// 특정 날짜와 카테고리에 해당하는 완료 업무 필터링
+const getCompletedWorksForCell = (categoryId, targetDate) => {
+  
+  const filteredWorks = weeklyEndWorks.value.filter(work => {
+    if (!work.end_at || !work.root_category_id) {
+      return false
+    }
+    
+    const workEndDate = work.end_at.split('T')[0] // YYYY-MM-DD 형식으로 변환
+    const categoryMatch = work.root_category_id === categoryId
+    const dateMatch = workEndDate === targetDate
+    
+    
+    return categoryMatch && dateMatch
+  })
+  
+  return filteredWorks
+}
+
+// 업무 태그 색상 생성
+const getWorkTagColor = (work) => {
+  // 업무 우선순위나 카테고리에 따른 색상
+  const colors = [
+    '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+    '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'
+  ]
+  
+  // 업무 ID를 기반으로 일관된 색상 할당
+  const colorIndex = work.id % colors.length
+  return colors[colorIndex]
+}
+
+// 완료 시간 포맷팅
+const formatCompletedTime = (endAt) => {
+  if (!endAt) return ''
+  const date = new Date(endAt)
+  return `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`
+}
+
+// 텍스트 길이 제한 함수
+const truncateText = (text, maxLength) => {
+  if (!text) return ''
+  if (text.length <= maxLength) return text
+  return text.substring(0, maxLength) + '...'
+}
+
+// 마감일 상태 확인 함수
+const getDeadlineStatus = (work) => {
+  if (!work.endDate) return 'normal'
+  
+  const today = new Date()
+  today.setHours(0, 0, 0, 0) // 시간을 00:00:00으로 설정
+  
+  const endDate = new Date(work.endDate)
+  endDate.setHours(0, 0, 0, 0) // 시간을 00:00:00으로 설정
+  
+  if (endDate < today) {
+    return 'overdue' // 마감일 지남
+  } else if (endDate.getTime() === today.getTime()) {
+    return 'due-today' // 오늘이 마감일
+  } else {
+    return 'normal' // 일반
+  }
+}
+
+// ID 기반 일관된 색상 생성 함수
+const generateConsistentColor = (id) => {
   const colors = [
     '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
     '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
     '#F8C471', '#82E0AA', '#F1948A', '#85C1E9', '#D7BDE2'
   ]
-  return colors[Math.floor(Math.random() * colors.length)]
+  // ID를 기반으로 일관된 색상 인덱스 생성
+  const hash = id.toString().split('').reduce((a, b) => {
+    a = ((a << 5) - a) + b.charCodeAt(0)
+    return a & a
+  }, 0)
+  return colors[Math.abs(hash) % colors.length]
 }
 
 const getStatusClass = (status) => {
@@ -942,7 +991,7 @@ const toggleCategory = (categoryId) => {
     }
     return false
   }
-  toggleCategoryInList(hierarchicalCategories.value)
+  toggleCategoryInList(todayCategoryHierarchy.value)
 }
 
 const findCategoryById = (categoryId, categories = hierarchicalCategories.value) => {
@@ -958,47 +1007,163 @@ const findCategoryById = (categoryId, categories = hierarchicalCategories.value)
   return null
 }
 
+// 특정 카테고리까지의 경로를 모두 확장하는 함수
+const expandPathToCategory = (categoryId, categories = hierarchicalCategories.value) => {
+  console.log('🔍 경로 확장 중 - 찾는 카테고리 ID:', categoryId)
+  console.log('🔍 검색할 카테고리 목록:', categories.map(c => ({ id: c.id, name: c.name })))
+  
+  for (const category of categories) {
+    if (category.id === categoryId) {
+      console.log('✅ 목표 카테고리 찾음:', category.name)
+      return true // 목표 카테고리를 찾았음
+    }
+    if (category.children) {
+      const found = expandPathToCategory(categoryId, category.children)
+      if (found) {
+        // 자식에서 목표를 찾았으므로 현재 카테고리를 확장
+        console.log('🔓 카테고리 확장:', category.name)
+        category.expanded = true
+        return true
+      }
+    }
+  }
+  console.log('❌ 카테고리를 찾을 수 없음')
+  return false
+}
+
+// 업무 편집 시 필요한 카테고리 경로를 동적으로 로드하는 함수
+const loadCategoryPath = async (categories) => {
+  console.log('📡 카테고리 경로 로드 시작:', categories)
+  
+  // 레벨별로 정렬
+  const sortedCategories = categories.sort((a, b) => a.level - b.level)
+  
+  // 각 레벨별로 카테고리 로드
+  for (const category of sortedCategories) {
+    let parentId = null
+    
+    // 상위 레벨 카테고리가 있는지 확인
+    const parentCategory = sortedCategories.find(c => c.level === category.level - 1)
+    if (parentCategory) {
+      parentId = parentCategory.category_id
+    }
+    
+    console.log(`📡 레벨 ${category.level} 카테고리 로드 중... (부모: ${parentId})`)
+    
+    try {
+      const childCategories = await loadCategories(parentId, category.level)
+      console.log(`✅ 레벨 ${category.level} 카테고리 로드 완료:`, childCategories)
+      
+      // hierarchicalCategories에 추가/업데이트
+      if (parentId === null) {
+        // 최상위 레벨은 직접 추가
+        childCategories.forEach(child => {
+          const existing = hierarchicalCategories.value.find(c => c.id === child.id)
+          if (!existing) {
+            hierarchicalCategories.value.push(child)
+          }
+        })
+      } else {
+        // 하위 레벨은 부모 카테고리에 추가
+        const parent = findCategoryById(parentId)
+        if (parent && !parent.loaded) {
+          parent.children = childCategories
+          parent.loaded = true
+        }
+      }
+    } catch (error) {
+      console.error(`❌ 레벨 ${category.level} 카테고리 로드 실패:`, error)
+    }
+  }
+}
+
+// 새로운 카테고리 구조용 함수들
 const getWorksForCategory = (categoryId) => {
-  return todayWorks.value.filter(work => work.categoryId === categoryId)
+  const category = findCategoryInHierarchy(todayCategoryHierarchy.value, categoryId)
+  if (!category || !category.works) return []
+  // 완료되지 않은 업무만 반환
+  return category.works.filter(work => work.status !== '완료')
+}
+
+// 카테고리별 작업 목록을 위한 computed 속성들
+const categoryWorkLists = ref(new Map())
+
+// 드래그 앤 드롭용 카테고리 업무 가져오기
+const getCategoryWorks = (categoryId) => {
+  if (!categoryWorkLists.value.has(categoryId)) {
+    const category = findCategoryInHierarchy(todayCategoryHierarchy.value, categoryId)
+    if (category && category.works) {
+      const filteredWorks = category.works.filter(work => work.status !== '완료')
+      categoryWorkLists.value.set(categoryId, ref(filteredWorks))
+    } else {
+      categoryWorkLists.value.set(categoryId, ref([]))
+    }
+  }
+  return categoryWorkLists.value.get(categoryId)
+}
+
+// 업무 순서 변경 핸들러
+const updateWorkOrder = (event) => {
+  console.log('업무 순서가 변경되었습니다:', event)
+  
+  if (event.moved) {
+    const { oldIndex, newIndex, element } = event.moved
+    console.log(`업무 "${element.name}"이 ${oldIndex}에서 ${newIndex}로 이동했습니다.`)
+    
+    // 필요시 서버에 순서 변경 API 호출
+    // updateWorkOrderAPI(element.id, newIndex)
+  }
 }
 
 // 드롭다운 전에 최상위에서 보여줄 업무들 (하위 카테고리 업무 포함)
 const getWorksForTopCategory = (categoryId) => {
-  const category = findCategoryById(categoryId)
+  const category = findCategoryInHierarchy(todayCategoryHierarchy.value, categoryId)
   if (!category) return []
   
-  const getAllChildrenIds = (cat) => {
-    let ids = [cat.id]
+  const getAllWorks = (cat) => {
+    let works = [...(cat.works || [])]
     if (cat.children) {
       for (const child of cat.children) {
-        ids = ids.concat(getAllChildrenIds(child))
+        works = works.concat(getAllWorks(child))
       }
     }
-    return ids
+    return works
   }
   
-  const allIds = getAllChildrenIds(category)
-  return todayWorks.value.filter(work => allIds.includes(work.categoryId))
+  const allWorks = getAllWorks(category)
+  // 완료되지 않은 업무만 반환
+  return allWorks.filter(work => work.status !== '완료')
 }
 
 const hasWorksInCategory = (category) => {
-  const getAllChildrenIds = (cat) => {
-    let ids = [cat.id]
+  const hasWorksRecursively = (cat) => {
+    if (cat.works && cat.works.length > 0) return true
     if (cat.children) {
-      for (const child of cat.children) {
-        ids = ids.concat(getAllChildrenIds(child))
-      }
+      return cat.children.some(child => hasWorksRecursively(child))
     }
-    return ids
+    return false
   }
   
-  const allIds = getAllChildrenIds(category)
-  return todayWorks.value.some(work => allIds.includes(work.categoryId))
+  return hasWorksRecursively(category)
+}
+
+// todayCategoryHierarchy에서 카테고리 찾기
+const findCategoryInHierarchy = (categories, categoryId) => {
+  for (const category of categories) {
+    if (category.id === categoryId) {
+      return category
+    }
+    if (category.children) {
+      const found = findCategoryInHierarchy(category.children, categoryId)
+      if (found) return found
+    }
+  }
+  return null
 }
 
 // 해당 카테고리에 직속으로 업무가 있는지 확인 (하위 카테고리 제외)
 const hasDirectWorksInCategory = (category) => {
-  return todayWorks.value.some(work => work.categoryId === category.id)
+  return category.works && category.works.length > 0
 }
 
 const getCategoryName = (categoryId) => {
@@ -1007,16 +1172,56 @@ const getCategoryName = (categoryId) => {
 }
 
 // 이벤트 핸들러
-const prevWeek = () => {
+// 주간 완료 업무 API 호출
+const getWeekendWorks = async (startDate, endDate) => {
+  try {
+    const params = new URLSearchParams({
+      start: startDate,
+      end: endDate
+    })
+    
+    const response = await fetch(`http://127.0.0.1:8000/api/v1/work/weekend?${params}`)
+    if (response.ok) {
+      const data = await response.json()
+      return data
+    } else {
+      console.error('❌ 주간 완료 업무 API 에러:', response.statusText)
+      return []
+    }
+  } catch (error) {
+    console.error('💥 주간 완료 업무 API 호출 에러:', error)
+    return []
+  }
+}
+
+// 주간 데이터 업데이트
+const updateWeeklyData = async () => {
+  const monday = getKoreanMonday(currentWeek.value)
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+  sunday.setHours(23, 59, 59, 999)
+  
+  console.log(`📅 주간 데이터 업데이트: ${monday.toISOString().split('T')[0]} ~ ${sunday.toISOString().split('T')[0]}`)
+  console.log(`📅 API 호출 범위: ${monday.toISOString()} ~ ${sunday.toISOString()}`)
+  
+  weeklyEndWorks.value = await getWeekendWorks(
+    monday.toISOString(),
+    sunday.toISOString()
+  )
+}
+
+const prevWeek = async () => {
   const newWeek = new Date(currentWeek.value)
   newWeek.setDate(newWeek.getDate() - 7)
   currentWeek.value = newWeek
+  await updateWeeklyData() // 주간 데이터 업데이트
 }
 
-const nextWeek = () => {
+const nextWeek = async () => {
   const newWeek = new Date(currentWeek.value)
   newWeek.setDate(newWeek.getDate() + 7)
   currentWeek.value = newWeek
+  await updateWeeklyData() // 주간 데이터 업데이트
 }
 
 const addWork = () => {
@@ -1040,9 +1245,29 @@ const editWork = (work) => {
   showWorkModal.value = true
 }
 
+const viewCompletedWorkDetail = (work) => {
+  
+  // 완료된 업무 데이터를 모달에 맞는 형식으로 변환
+  currentWork.value = {
+    id: work.id,
+    name: work.title,
+    content: work.content || '',
+    categoryId: work.root_category_id,
+    status: '완료',
+    startDate: work.started_at ? work.started_at.split('T')[0] : '',
+    endDate: work.end_at ? work.end_at.split('T')[0] : '',
+    isMyWork: work.myjob || false,
+    categories: work.categories || []
+  }
+  
+  isEditMode.value = false
+  isDetailMode.value = true
+  showWorkModal.value = true
+}
+
 const addWorkToCell = (categoryId, date) => {
-  console.log(`카테고리 ${categoryId}에 ${date} 날짜로 업무 추가`)
-  // 추후 구현
+  // 추후 구현: 해당 카테고리와 날짜로 업무 추가 기능
+  // console.log(`카테고리 ${categoryId}에 ${date} 날짜로 업무 추가`)
 }
 
 const closeModal = () => {
@@ -1060,7 +1285,7 @@ const saveWork = async () => {
     return
   }
   
-  const categoryId = isEditMode.value ? currentWork.value.categoryId : selectedProjectForWork.value?.id
+  const categoryId = selectedProjectForWork.value?.id
   if (!categoryId) {
     alert('프로젝트를 선택해주세요.')
     return
@@ -1069,24 +1294,55 @@ const saveWork = async () => {
   try {
     if (isEditMode.value) {
       // 수정 모드 - PUT 요청
-      const updateData = {
-        title: currentWork.value.name,
-        content: currentWork.value.content || null,
-        user_id: 1, // 임시 사용자 ID
-        category_id: categoryId,
-        current_status: currentWork.value.status,
-        started_at: currentWork.value.startDate ? new Date(currentWork.value.startDate + 'T00:00:00').toISOString() : null,
-        deadline: currentWork.value.endDate ? new Date(currentWork.value.endDate + 'T23:59:59').toISOString() : null,
-        myjob: currentWork.value.isMyWork
-      }
+      let response
       
-      const response = await fetch(`http://127.0.0.1:8000/api/v1/work/work/${currentWork.value.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(updateData)
-      })
+      if (currentWork.value.status === '완료') {
+        // 완료 처리용 API 호출
+        console.log(`📡 모달에서 업무 완료 API 호출 - 업무 ID: ${currentWork.value.id}`)
+        
+        response = await fetch(`http://127.0.0.1:8000/api/v1/work/end/${currentWork.value.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        })
+      } else {
+        // 일반 수정 API 호출
+        const updateData = {
+          title: currentWork.value.name,
+          content: currentWork.value.content || null,
+          user_id: 1, // 임시 사용자 ID
+          category_id: categoryId,
+          current_status: currentWork.value.status,
+          started_at: currentWork.value.startDate ? new Date(currentWork.value.startDate + 'T00:00:00').toISOString() : null,
+          deadline: currentWork.value.endDate ? new Date(currentWork.value.endDate + 'T23:59:59').toISOString() : null,
+          myjob: currentWork.value.isMyWork
+        }
+        
+        console.log('📋 업무 수정 전송 데이터:', updateData)
+        console.log('📋 업무 수정 JSON 문자열:', JSON.stringify(updateData, null, 2))
+        
+        response = await fetch(`http://127.0.0.1:8000/api/v1/work/work/${currentWork.value.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(updateData)
+        })
+        
+        console.log('📡 업무 수정 응답 상태:', response.status)
+        
+        if (!response.ok) {
+          const errorText = await response.text()
+          console.error('❌ 업무 수정 응답 에러 내용:', errorText)
+          try {
+            const errorJson = JSON.parse(errorText)
+            console.error('❌ 업무 수정 파싱된 에러 데이터:', errorJson)
+          } catch (e) {
+            console.error('❌ 업무 수정 에러 응답을 JSON으로 파싱 실패')
+          }
+        }
+      }
       
       if (response.ok) {
         // 로컬 데이터 업데이트
@@ -1098,6 +1354,12 @@ const saveWork = async () => {
           }
         }
         console.log('✅ 업무 수정 성공')
+        
+        // 완료 처리 시 주간 데이터도 업데이트
+        if (currentWork.value.status === '완료') {
+          await updateWeeklyData()
+          console.log('🔄 모달에서 주간 완료 업무 데이터 업데이트됨')
+        }
       } else {
         console.error('❌ 업무 수정 실패:', response.statusText)
         alert('업무 수정에 실패했습니다.')
@@ -1168,10 +1430,79 @@ const deleteWork = () => {
   closeModal()
 }
 
-// 젼직 버튼 클릭 시 편집 모드로 전환
-const editCurrentWork = () => {
+// 편집 버튼 클릭 시 편집 모드로 전환
+const editCurrentWork = async () => {
   isDetailMode.value = false
   isEditMode.value = true
+  
+  console.log('🔍 편집 모드 - 현재 업무:', currentWork.value)
+  
+  // 현재 업무의 카테고리를 selectedProjectForWork에 설정
+  let categoryId = null
+  
+  // categoryId 직접 확인
+  if (currentWork.value.categoryId) {
+    categoryId = currentWork.value.categoryId
+  } 
+  // categories 배열에서 최하위 레벨 카테고리 추출
+  else if (currentWork.value.categories && currentWork.value.categories.length > 0) {
+    const sortedCategories = currentWork.value.categories.sort((a, b) => b.level - a.level)
+    categoryId = sortedCategories[0].category_id // 가장 높은 레벨(최하위) 카테고리
+  }
+  
+  console.log('🎯 추출된 카테고리 ID:', categoryId)
+  
+  if (categoryId) {
+    let category = findCategoryById(categoryId)
+    console.log('🔍 찾은 카테고리:', category)
+    
+    if (category) {
+      selectedProjectForWork.value = category
+      // 선택된 카테고리까지의 경로를 모두 확장
+      expandPathToCategory(categoryId)
+      console.log('✅ 카테고리 선택 및 경로 확장 완료')
+    } else {
+      console.warn('⚠️ hierarchicalCategories에서 카테고리를 찾을 수 없음:', categoryId)
+      
+      // categories 배열에서 직접 카테고리 정보 가져와서 생성하고 계층에 추가
+      if (currentWork.value.categories) {
+        const targetCategory = currentWork.value.categories.find(cat => cat.category_id === categoryId)
+        if (targetCategory) {
+          console.log('✅ work.categories에서 카테고리 정보 찾음:', targetCategory)
+          
+          // 임시로 카테고리 객체 생성
+          const tempCategory = {
+            id: targetCategory.category_id,
+            name: targetCategory.category_name,
+            level: targetCategory.level,
+            expanded: false,
+            hasChildren: false,
+            loaded: true,
+            children: []
+          }
+          
+          // 편집 시에만 사용할 수 있도록 hierarchicalCategories에 임시 추가
+          await loadCategoryPath(currentWork.value.categories)
+          
+          // 다시 검색해보기
+          category = findCategoryById(categoryId)
+          if (category) {
+            selectedProjectForWork.value = category
+            expandPathToCategory(categoryId)
+            console.log('✅ 경로 로드 후 카테고리 선택 완료')
+          } else {
+            // 여전히 찾을 수 없다면 임시 카테고리 사용
+            selectedProjectForWork.value = tempCategory
+            console.log('✅ 임시 카테고리 선택 완료:', tempCategory)
+          }
+        } else {
+          console.error('❌ work.categories에서도 카테고리를 찾을 수 없음')
+        }
+      }
+    }
+  } else {
+    console.warn('⚠️ 카테고리 ID가 없음')
+  }
 }
 
 // 한국어 날짜 포맷팅
@@ -1183,6 +1514,17 @@ const formatDateKorean = (dateString) => {
 
 // 프로젝트 계층 구조 파싱
 const getProjectHierarchy = () => {
+  // categories 배열이 있는 경우 (완료된 업무 등)
+  if (currentWork.value.categories && currentWork.value.categories.length > 0) {
+    const sortedCategories = currentWork.value.categories.sort((a, b) => a.level - b.level)
+    return {
+      root: sortedCategories[0]?.category_name || '',
+      sub: sortedCategories[1]?.category_name || '',
+      leaf: sortedCategories[2]?.category_name || ''
+    }
+  }
+  
+  // categoryId가 없는 경우
   if (!currentWork.value.categoryId) return { root: '', sub: '', leaf: '' }
   
   const findHierarchy = (categories, targetId, path = []) => {
@@ -1206,12 +1548,144 @@ const getProjectHierarchy = () => {
   return findHierarchy(hierarchicalCategories.value, currentWork.value.categoryId)
 }
 
+// 업무 데이터로부터 카테고리 계층구조 생성
+const buildCategoryHierarchyFromWorks = (works) => {
+  const categoryMap = new Map()
+  
+  // 모든 업무의 카테고리 정보를 수집
+  works.forEach(work => {
+    if (work.categories && work.categories.length > 0) {
+      // categories 배열을 level 순으로 정렬
+      const sortedCategories = work.categories.sort((a, b) => a.level - b.level)
+      
+      sortedCategories.forEach(category => {
+        if (!categoryMap.has(category.category_id)) {
+          categoryMap.set(category.category_id, {
+            id: category.category_id,
+            name: category.category_name,
+            level: category.level,
+            expanded: false,
+            children: [],
+            works: [] // 이 카테고리에 속한 업무들
+          })
+        }
+        
+        // 해당 카테고리에 업무 추가 (최하위 레벨에만)
+        const isLowestLevel = !sortedCategories.some(c => c.level > category.level)
+        if (isLowestLevel) {
+          categoryMap.get(category.category_id).works.push(work)
+        }
+      })
+    }
+  })
+  
+  // 계층구조 구성
+  const rootCategories = []
+  const categories = Array.from(categoryMap.values())
+  
+  // level 순으로 정렬한 후 같은 레벨 내에서는 ID 순으로 정렬
+  categories.sort((a, b) => {
+    if (a.level !== b.level) {
+      return a.level - b.level
+    }
+    return a.id - b.id
+  })
+  
+  // 부모-자식 관계 설정
+  categories.forEach(category => {
+    if (category.level === 0) {
+      rootCategories.push(category)
+    } else {
+      // 부모 카테고리 찾기
+      const parentCategory = categories.find(parent => {
+        // 같은 업무의 카테고리에서 level이 하나 작은 것 찾기
+        return parent.level === category.level - 1 && 
+               works.some(work => 
+                 work.categories && 
+                 work.categories.some(c => c.category_id === parent.id) &&
+                 work.categories.some(c => c.category_id === category.id)
+               )
+      })
+      
+      if (parentCategory && !parentCategory.children.some(child => child.id === category.id)) {
+        parentCategory.children.push(category)
+      }
+    }
+  })
+  
+  return rootCategories
+}
+
+// 카테고리 동적 로딩 함수
+const loadCategories = async (parentId = null, level = 0) => {
+  const endpoint = level === 0 
+    ? 'http://127.0.0.1:8000/api/v1/category/level0'
+    : `http://127.0.0.1:8000/api/v1/category/level1/${parentId}`
+  
+  console.log(`📡 카테고리 로드 요청 - parentId: ${parentId}, level: ${level}, endpoint: ${endpoint}`)
+  
+  try {
+    categoryLoadingStates.value.set(parentId || 'root', true)
+    const response = await fetch(endpoint)
+    if (response.ok) {
+      const data = await response.json()
+      
+      const mappedData = data.map(cat => ({
+        id: cat.id,
+        name: cat.name,
+        level: level,
+        parentId: cat.parent_id || null,
+        expanded: false,
+        children: [], // 초기에는 빈 배열
+        hasChildren: cat.has_children !== false, // API에서 has_children 필드가 없으면 true로 가정
+        loaded: false // 하위 카테고리 로드 여부
+      }))
+      
+      console.log('✅ 매핑된 카테고리 데이터:', mappedData)
+      return mappedData
+    } else {
+      console.error('❌ API 응답 실패:', response.status, response.statusText)
+    }
+  } catch (error) {
+    console.error('💥 카테고리 로드 실패:', error)
+  } finally {
+    categoryLoadingStates.value.set(parentId || 'root', false)
+  }
+  return []
+}
+
 // 새로운 프로젝트 선택 관련 함수들
-const toggleProjectExpand = (nodeId) => {
+const toggleProjectExpand = async (nodeId) => {
+  console.log('🔄 toggleProjectExpand 호출됨, nodeId:', nodeId)
+  
   if (expandedProjectNodes.value.has(nodeId)) {
+    console.log('📂 카테고리 닫기:', nodeId)
     expandedProjectNodes.value.delete(nodeId)
   } else {
+    console.log('📂 카테고리 열기:', nodeId)
     expandedProjectNodes.value.add(nodeId)
+    
+    // 하위 카테고리를 아직 로드하지 않았다면 로드
+    const category = findCategoryById(nodeId)
+    console.log('🔍 찾은 카테고리:', category)
+    
+    if (category) {
+      console.log('✅ 카테고리 상태 - loaded:', category.loaded, ', hasChildren:', category.hasChildren)
+      
+      if (!category.loaded && category.hasChildren) {
+        console.log('📡 하위 카테고리 로드 중...', nodeId)
+        const childCategories = await loadCategories(nodeId, category.level + 1)
+        console.log('✅ 하위 카테고리 로드됨:', childCategories)
+        category.children = childCategories
+        category.loaded = true
+      } else if (!category.hasChildren) {
+        console.log('ℹ️ 하위 카테고리가 없음')
+      } else if (category.loaded) {
+        console.log('ℹ️ 이미 로드됨')
+      }
+    } else {
+      console.error('❌ 카테고리를 찾을 수 없음:', nodeId)
+    }
   }
 }
 
@@ -1312,37 +1786,90 @@ const changeWorkStatus = async (work, newStatus, statusClass) => {
   // 현재 상태와 같으면 리턴
   if (work.status === newStatus) return
   
+  // 완료로 변경할 때 확인 창 표시
+  if (newStatus === '완료') {
+    const confirmed = confirm(`"${work.name}" 업무를 완료하시겠습니까?\n\n완료된 업무는 오늘의 업무 목록에서 제거되고 주간 업무 표에 표시됩니다.`)
+    if (!confirmed) {
+      return // 사용자가 취소한 경우 함수 종료
+    }
+  }
+  
   // 로딩 상태 설정
   work.statusLoading = true
   
   try {
-    // API 호출용 데이터 준비
-    const updateData = {
-      title: work.name,
-      content: work.content || null,
-      user_id: 1, // 임시 사용자 ID
-      category_id: work.categoryId,
-      current_status: newStatus,
-      started_at: work.startDate ? new Date(work.startDate + 'T00:00:00').toISOString() : null,
-      deadline: work.endDate ? new Date(work.endDate + 'T23:59:59').toISOString() : null,
-      myjob: work.isMyWork
+    let response
+    
+    if (newStatus === '완료') {
+      // 완료 처리용 API 호출
+      console.log(`📡 업무 완료 API 호출 - 업무 ID: ${work.id}`)
+      
+      response = await fetch(`http://127.0.0.1:8000/api/v1/work/end/${work.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+    } else {
+      // 카테고리 ID 추출 (categories 배열에서 최하위 레벨 카테고리)
+      let categoryId = work.categoryId
+      if (!categoryId && work.categories && work.categories.length > 0) {
+        const sortedCategories = work.categories.sort((a, b) => b.level - a.level)
+        categoryId = sortedCategories[0].category_id
+      }
+      
+      console.log('🔍 상태 변경용 카테고리 ID:', categoryId)
+      console.log('🔍 업무 객체:', work)
+      
+      // 일반 상태 변경 API 호출
+      const updateData = {
+        title: work.name,
+        content: work.content || null,
+        user_id: 1, // 임시 사용자 ID
+        category_id: categoryId,
+        current_status: newStatus,
+        started_at: work.startDate ? new Date(work.startDate + 'T00:00:00').toISOString() : null,
+        deadline: work.endDate ? new Date(work.endDate + 'T23:59:59').toISOString() : null,
+        myjob: work.isMyWork
+      }
+      
+      console.log(`📡 상태 변경 API 호출 - 업무 ID: ${work.id}, 새 상태: ${newStatus}`)
+      console.log('📋 전송 데이터:', updateData)
+      console.log('📋 JSON 문자열:', JSON.stringify(updateData, null, 2))
+      
+      response = await fetch(`http://127.0.0.1:8000/api/v1/work/work/${work.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updateData)
+      })
+      
+      console.log('📡 응답 상태:', response.status)
+      console.log('📡 응답 헤더:', response.headers)
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('❌ 응답 에러 내용:', errorText)
+        try {
+          const errorJson = JSON.parse(errorText)
+          console.error('❌ 파싱된 에러 데이터:', errorJson)
+        } catch (e) {
+          console.error('❌ 에러 응답을 JSON으로 파싱 실패')
+        }
+      }
     }
-    
-    console.log(`📡 상태 변경 API 호출 - 업무 ID: ${work.id}, 새 상태: ${newStatus}`)
-    console.log('전송 데이터:', updateData)
-    
-    const response = await fetch(`http://127.0.0.1:8000/api/v1/work/work/${work.id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(updateData)
-    })
     
     if (response.ok) {
       // 성공 시 로컬 상태 업데이트
       work.status = newStatus
       console.log(`✅ 상태 변경 성공: ${work.name} → ${newStatus}`)
+      
+      // 완료 처리 시 주간 데이터도 업데이트
+      if (newStatus === '완료') {
+        await updateWeeklyData()
+        console.log('🔄 주간 완료 업무 데이터 업데이트됨')
+      }
     } else {
       console.error('❌ 상태 변경 실패:', response.statusText)
       alert('상태 변경에 실패했습니다.')
@@ -1373,13 +1900,10 @@ onMounted(async () => {
   
   try {
     // 오늘의 업무 데이터 가져오기
-    console.log('📡 오늘의 업무 API 호출 중...')
     const response = await fetch('http://127.0.0.1:8000/api/v1/work/today')
-    console.log('📨 응답 받음:', response.status, response.statusText)
     
     if (response.ok) {
       const data = await response.json()
-      console.log('✅ 오늘의 업무 API 응답 데이터:', data)
       
       // 데이터 매핑 및 화면 업데이트
       const mappedWorks = data.map(work => ({
@@ -1390,82 +1914,53 @@ onMounted(async () => {
         status: work.current_status,
         startDate: work.started_at ? work.started_at.split('T')[0] : '',
         endDate: work.deadline ? work.deadline.split('T')[0] : '',
-        isMyWork: work.myjob
+        isMyWork: work.myjob,
+        categories: work.categories || [] // 새로 추가된 카테고리 정보
       }))
       
-      console.log('🔄 매핑된 데이터:', mappedWorks)
-      todayWorks.value = mappedWorks  // 화면 업데이트
+      todayWorks.value = mappedWorks
       
-      // 카테고리 데이터도 가져오기 (category_id: 12)
-      console.log('📡 카테고리 데이터 요청...')
-      const categoryResponse = await fetch('http://127.0.0.1:8000/api/v1/category/categories/12')
+      // 업무들로부터 카테고리 계층구조 생성
+      const categoryHierarchy = buildCategoryHierarchyFromWorks(mappedWorks)
       
-      if (categoryResponse.ok) {
-        const categoryData = await categoryResponse.json()
-        console.log('✅ 카테고리 데이터:', categoryData)
-        
-        // 카테고리 데이터 매핑
-        const mappedCategories = categoryData.map(cat => ({
-          id: cat.id,
-          name: cat.name,
-          level: cat.level,
-          parentId: cat.parent_id,
-          expanded: false,
-          children: []
-        }))
-        
-        // 계층 구조 구성
-        const rootCategories = []
-        const categoryMap = new Map()
-        
-        mappedCategories.forEach(cat => {
-          categoryMap.set(cat.id, { ...cat, children: [] })
-        })
-        
-        mappedCategories.forEach(cat => {
-          if (cat.parentId === null) {
-            rootCategories.push(categoryMap.get(cat.id))
-          } else {
-            const parent = categoryMap.get(cat.parentId)
-            if (parent) {
-              parent.children.push(categoryMap.get(cat.id))
-            }
-          }
-        })
-        
-        console.log('🌳 계층형 카테고리:', rootCategories)
-        hierarchicalCategories.value = rootCategories
-        
-      } else {
-        console.error('❌ 카테고리 에러:', categoryResponse.statusText)
-      }
+      // 오늘의 업무 섹션용 카테고리 설정 (기존 hierarchicalCategories와 별도)
+      todayCategoryHierarchy.value = categoryHierarchy
+      
+      // 카테고리별 작업 목록 초기화
+      categoryWorkLists.value.clear()
+      
+      // 프로젝트 선택용 최상위 카테고리 로드
+      const topCategories = await loadCategories(null, 0)
+      hierarchicalCategories.value = topCategories
       
     } else {
       console.error('❌ 오늘의 업무 API 응답 실패:', response.status, response.statusText)
     }
     
     // 주간 테이블용 최상위 카테고리 가져오기
-    console.log('📡 주간 테이블용 최상위 카테고리 API 호출 중...')
     const topCategoryResponse = await fetch('http://127.0.0.1:8000/api/v1/category/level0')
     
     if (topCategoryResponse.ok) {
       const topCategoryData = await topCategoryResponse.json()
-      console.log('✅ 최상위 카테고리 API 응답:', topCategoryData)
       
       // 주간 테이블용 데이터 매핑
-      const mappedTopCategories = topCategoryData.map(cat => ({
-        id: cat.id,
-        name: cat.name,
-        color: cat.color || generateRandomColor() // 색상이 없으면 랜덤 색상 생성
-      }))
+      const mappedTopCategories = topCategoryData
+        .map(cat => ({
+          id: cat.id,
+          name: cat.name,
+          color: cat.color || generateConsistentColor(cat.id) // 색상이 없으면 ID 기반 일관된 색상 생성
+        }))
+        .sort((a, b) => a.id - b.id) // ID 순으로 정렬하여 일관성 유지
       
-      console.log('🎨 매핑된 최상위 카테고리:', mappedTopCategories)
       topCategories.value = mappedTopCategories // 주간 테이블 업데이트
       
     } else {
       console.error('❌ 최상위 카테고리 API 에러:', topCategoryResponse.statusText)
       // 실패 시 기본값 유지
     }
+    
+    // 초기 주간 완료 업무 데이터 로드
+    await updateWeeklyData()
     
   } catch (error) {
     console.error('💥 API 호출 에러:', error)
@@ -1724,6 +2219,25 @@ onMounted(async () => {
 
 .table-row:last-child {
   border-bottom: none;
+}
+
+/* 마감일 상태별 스타일 */
+.table-row.overdue {
+  background: #fff5f5 !important; /* 연한 빨간색 배경 */
+  box-shadow: inset 4px 0 0 #f56565; /* 왼쪽 빨간색 테두리 (box-shadow로 변경) */
+}
+
+.table-row.overdue:hover {
+  background: #fed7d7 !important; /* 호버 시 더 진한 빨간색 */
+}
+
+.table-row.due-today {
+  background: #fffbf0 !important; /* 연한 주황색 배경 */
+  box-shadow: inset 4px 0 0 #ed8936; /* 왼쪽 주황색 테두리 (box-shadow로 변경) */
+}
+
+.table-row.due-today:hover {
+  background: #feebc8 !important; /* 호버 시 더 진한 주황색 */
 }
 
 .work-category {
@@ -1989,6 +2503,8 @@ onMounted(async () => {
   border: 1px solid #e1e5e9;
   border-radius: 8px;
   overflow: hidden;
+  width: 100%;
+  table-layout: fixed; /* 고정 레이아웃으로 컬럼 너비 일정하게 유지 */
 }
 
 .weekly-header {
@@ -2064,12 +2580,16 @@ onMounted(async () => {
 }
 
 .work-cell {
-  padding: 1rem;
+  padding: 0.5rem;
   border-right: 1px solid #e1e5e9;
   min-height: 80px;
   cursor: pointer;
   transition: background 0.2s;
   background: white;
+  overflow: hidden; /* 셀 내용이 넘치지 않도록 */
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .work-cell:last-child {
@@ -2082,6 +2602,54 @@ onMounted(async () => {
 
 .work-cell.today {
   background: #f0f4ff;
+}
+
+/* 완료 업무 태그 스타일 */
+.completed-work-tag {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  margin: 1px 0;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  height: 22px; /* 더 작은 고정 높이 */
+  width: 100%; /* 셀 너비에 맞춤 */
+  overflow: hidden; /* 넘치는 내용 숨기기 */
+  box-sizing: border-box; /* 패딩 포함하여 크기 계산 */
+}
+
+.completed-work-tag:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  filter: brightness(1.1);
+}
+
+.work-tag-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 8px;
+  font-weight: 500;
+  min-width: 0; /* flexbox에서 텍스트가 줄어들 수 있도록 */
+  line-height: 1.2; /* 줄 높이 고정 */
+}
+
+.work-tag-time {
+  font-size: 0.7rem;
+  opacity: 0.9;
+  flex-shrink: 0; /* "완료" 텍스트가 줄어들지 않도록 */
+  white-space: nowrap; /* 줄 바꿈 방지 */
+  background: rgba(255, 255, 255, 0.2);
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-weight: 400;
+  min-width: fit-content;
 }
 
 /* 체크박스 스타일 */
@@ -2269,6 +2837,73 @@ onMounted(async () => {
 .form-textarea:focus {
   outline: none;
   border-color: #667eea;
+}
+
+/* 비활성화된 form 요소 */
+.form-select.disabled,
+.form-select:disabled {
+  background-color: #f8f9fa;
+  color: #6c757d;
+  cursor: not-allowed;
+  border-color: #dee2e6;
+}
+
+/* 상태 변경 불가 안내 메시지 */
+.status-notice,
+.completion-notice {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+
+/* 드래그 앤 드롭 스타일 */
+.draggable-item {
+  cursor: move;
+  transition: all 0.3s ease;
+}
+
+.draggable-item:hover {
+  background-color: #f8f9ff !important;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+}
+
+.drag-handle {
+  margin-left: 8px;
+  color: #bbb;
+  cursor: grab;
+  font-weight: bold;
+  user-select: none;
+}
+
+.drag-handle:hover {
+  color: #667eea;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+/* 드래그 중인 요소 */
+.sortable-ghost {
+  opacity: 0.5;
+  background-color: #667eea !important;
+  color: white;
+}
+
+.sortable-drag {
+  background-color: #667eea !important;
+  color: white;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  transform: rotate(5deg);
+}
+
+/* 드롭 영역 표시 */
+.sortable-chosen {
+  background-color: #f0f4ff !important;
 }
 
 /* 상세보기 전용 스타일 */

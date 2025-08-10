@@ -70,6 +70,11 @@ const emit = defineEmits(['toggle-expand', 'select-project'])
 
 // Computed
 const hasChildren = computed(() => {
+  // 동적 로딩을 위해 hasChildren 속성을 우선 확인
+  if (props.node.hasChildren !== undefined) {
+    return props.node.hasChildren
+  }
+  // 기존 로직도 유지 (하위 호환성)
   return props.node.children && props.node.children.length > 0
 })
 

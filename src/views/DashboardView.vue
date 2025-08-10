@@ -9,11 +9,36 @@
           <button @click="logout" class="logout-btn">로그아웃</button>
         </div>
       </div>
+      <!-- 네비게이션 메뉴 -->
+      <nav class="nav-menu">
+        <button 
+          class="nav-item"
+          :class="{ active: activeTab === 'today' }"
+          @click="setActiveTab('today')"
+        >
+          오늘의 업무
+        </button>
+        <button 
+          class="nav-item"
+          :class="{ active: activeTab === 'project' }"
+          @click="setActiveTab('project')"
+        >
+          프로젝트
+        </button>
+        <button 
+          class="nav-item"
+          :class="{ active: activeTab === 'third' }"
+          @click="setActiveTab('third')"
+        >
+          나의 업무일지
+        </button>
+      </nav>
     </header>
 
     <!-- 메인 컨텐츠 영역 -->
     <main class="dashboard-main">
       <!-- 오늘의 업무 섹션 -->
+      <div v-show="activeTab === 'today'">
       <section class="today-work-section">
         <div class="section-header">
           <h2>오늘의 업무</h2>
@@ -37,7 +62,9 @@
             <template v-if="hasWorksInCategory(category)">
               <div class="category-row top-level" @click="toggleCategory(category.id)">
                 <div class="table-cell category-cell">
-                  <span class="dropdown-icon" :class="{ 'expanded': category.expanded }">▶</span>
+                  <div class="category-indicator-wrapper">
+                    <div class="hierarchy-indicator level-0"></div>
+                  </div>
                   <span class="category-name">{{ category.name }}</span>
                 </div>
                 <div class="table-cell"></div>
@@ -174,7 +201,9 @@
                     <!-- 2단계 카테고리 -->
                     <div class="category-row sub-level-1">
                       <div class="table-cell category-cell">
-                        <span class="tree-connector">┗　　</span>
+                        <div class="category-indicator-wrapper">
+                          <div class="hierarchy-indicator level-1"></div>
+                        </div>
                         <span class="category-name">{{ subCategory.name }}</span>
                       </div>
                       <div class="table-cell"></div>
@@ -255,7 +284,9 @@
                           <!-- 3단계 카테고리 -->
                           <div class="category-row sub-level-2">
                             <div class="table-cell category-cell">
-                              <span class="tree-connector">　　┗　　</span>
+                              <div class="category-indicator-wrapper">
+                                <div class="hierarchy-indicator level-2"></div>
+                              </div>
                               <span class="category-name">{{ subSubCategory.name }}</span>
                             </div>
                             <div class="table-cell"></div>
@@ -401,7 +432,315 @@
           </div>
         </div>
       </section>
+      </div>
+
+      <!-- 프로젝트 섹션 -->
+      <div v-show="activeTab === 'project'">
+        <section class="project-section">
+          <div class="section-header">
+            <h2>연간 계획</h2>
+            <div class="header-controls">
+              <button @click="addProject" class="add-btn">+ 프로젝트 추가</button>
+              <div class="year-selector">
+                <button @click="changeYear(-1)" class="year-btn">◀</button>
+                <span class="current-year">{{ currentYear }}</span>
+                <button @click="changeYear(1)" class="year-btn">▶</button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 연간 달력 및 프로젝트 타임라인 -->
+          <div class="project-timeline">
+            <!-- 월별 헤더 -->
+            <div class="timeline-header">
+              <div class="project-name-col">프로젝트</div>
+              <div class="project-description-col">설명</div>
+              <div class="months-grid">
+                <div 
+                  v-for="month in months" 
+                  :key="month" 
+                  class="month-header"
+                >
+                  {{ month }}월
+                </div>
+              </div>
+            </div>
+            
+            <!-- 프로젝트 목록 및 타임라인 -->
+            <div class="timeline-body">
+              <template v-for="project in topLevelProjects" :key="project.id">
+                <div class="project-row" @click="viewProjectDetail(project)">
+                  <div class="project-name-cell">
+                    <div class="hierarchy-indicator level-0"></div>
+                    <div class="project-name">{{ project.name }}</div>
+                  </div>
+                  <div class="project-description-cell">
+                    <div class="project-description">{{ project.content }}</div>
+                  </div>
+                  <div class="timeline-grid">
+                    <div 
+                      v-for="month in 12" 
+                      :key="month" 
+                      class="timeline-cell"
+                    >
+                      <div 
+                        v-if="isProjectActiveInMonth(project, month)"
+                        class="project-bar"
+                        :style="getProjectBarStyle(project, month, 0)"
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- 하위 프로젝트들 -->
+                <template v-for="subProject in project.children" :key="`sub-${subProject.id}`">
+                  <div class="project-row sub-project" @click="viewProjectDetail(subProject)">
+                    <div class="project-name-cell">
+                      <div class="hierarchy-indicator level-1"></div>
+                      <div class="project-name">{{ subProject.name }}</div>
+                    </div>
+                    <div class="project-description-cell">
+                      <div class="project-description">{{ subProject.content }}</div>
+                    </div>
+                    <div class="timeline-grid">
+                      <div 
+                        v-for="month in 12" 
+                        :key="month" 
+                        class="timeline-cell"
+                      >
+                        <div 
+                          v-if="isProjectActiveInMonth(subProject, month)"
+                          class="project-bar"
+                          :style="getProjectBarStyle(subProject, month, 1)"
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- 3차 레벨 프로젝트들 -->
+                  <template v-for="subSubProject in subProject.children" :key="`subsub-${subSubProject.id}`">
+                    <div class="project-row sub-project" @click="viewProjectDetail(subSubProject)">
+                      <div class="project-name-cell">
+                        <div class="hierarchy-indicator level-2"></div>
+                        <div class="project-name">{{ subSubProject.name }}</div>
+                      </div>
+                      <div class="project-description-cell">
+                        <div class="project-description">{{ subSubProject.content }}</div>
+                      </div>
+                      <div class="timeline-grid">
+                        <div 
+                          v-for="month in 12" 
+                          :key="month" 
+                          class="timeline-cell"
+                        >
+                          <div 
+                            v-if="isProjectActiveInMonth(subSubProject, month)"
+                            class="project-bar"
+                            :style="getProjectBarStyle(subSubProject, month, 2)"
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+                </template>
+              </template>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- 나의 업무일지 섹션 -->
+      <div v-show="activeTab === 'third'">
+        <section class="diary-section">
+          <div class="section-header">
+            <h2>나의 업무일지</h2>
+          </div>
+          <div class="diary-content">
+            <p>나의 업무일지 내용 개발 예정</p>
+          </div>
+        </section>
+      </div>
     </main>
+
+    <!-- 프로젝트 상세 모달 -->
+    <div v-if="showProjectDetailModal" class="modal-overlay" @click="closeProjectDetailModal">
+      <div class="modal-content" @click.stop>
+        <!-- 모달 헤더 -->
+        <div class="modal-header">
+          <div class="modal-header-content">
+            <h3 class="modal-title">
+              <div class="title-icon">📊</div>
+              <span>프로젝트 상세</span>
+            </h3>
+            <button @click="closeProjectDetailModal" class="close-btn">×</button>
+          </div>
+        </div>
+
+        <!-- 모달 바디 -->
+        <div class="modal-body project-detail-body">
+          <div class="project-detail-content">
+            <!-- 프로젝트명 -->
+            <div class="project-info-item">
+              <div class="project-info-label">
+                <span class="label-icon">🎯</span>
+                <span class="label-text">프로젝트명</span>
+              </div>
+              <div class="project-info-content">{{ currentProjectDetail.name }}</div>
+            </div>
+
+            <!-- 프로젝트 기간 -->
+            <div class="project-info-item">
+              <div class="project-info-label">
+                <span class="label-icon">📅</span>
+                <span class="label-text">프로젝트 기간</span>
+              </div>
+              <div class="project-info-content period-value">
+                <span class="date-badge">{{ formatDate(currentProjectDetail.startDate) }}</span>
+                <span class="date-separator">~</span>
+                <span class="date-badge">{{ formatDate(currentProjectDetail.endDate) }}</span>
+              </div>
+            </div>
+
+            <!-- 프로젝트 설명 -->
+            <div class="project-info-item">
+              <div class="project-info-label">
+                <span class="label-icon">📝</span>
+                <span class="label-text">프로젝트 설명</span>
+              </div>
+              <div class="project-info-content">
+                <div class="project-detail-description">
+                  {{ currentProjectDetail.content }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 하위 프로젝트 목록 -->
+          <div v-if="currentProjectDetail.children && currentProjectDetail.children.length > 0" class="sub-projects-section">
+            <div class="project-info-item">
+              <div class="project-info-label">
+                <span class="label-icon">🌟</span>
+                <span class="label-text">하위 프로젝트</span>
+              </div>
+              <div class="sub-projects-list">
+              <div 
+                v-for="subProject in currentProjectDetail.children" 
+                :key="subProject.id"
+                class="sub-project-item"
+                @click="viewProjectDetail(subProject)"
+              >
+                <div class="sub-project-header">
+                  <div class="hierarchy-indicator level-1"></div>
+                  <div class="sub-project-name">{{ subProject.name }}</div>
+                  <div class="sub-project-period">
+                    <span class="period-icon">📅</span>
+                    {{ formatDate(subProject.startDate) }} ~ {{ formatDate(subProject.endDate) }}
+                  </div>
+                </div>
+                <div class="sub-project-description">{{ subProject.content }}</div>
+              </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 모달 푸터 -->
+        <div class="modal-footer">
+          <div></div>
+          <div class="button-group">
+            <button @click="closeProjectDetailModal" class="btn btn-secondary">닫기</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 프로젝트 추가 모달 -->
+    <div v-if="showProjectModal" class="modal-overlay" @click="closeProjectModal">
+      <div class="modal-content" @click.stop>
+        <!-- 모달 헤더 -->
+        <div class="modal-header">
+          <div class="modal-header-content">
+            <h3 class="modal-title">
+              <div class="title-icon">📊</div>
+              <span>프로젝트 추가</span>
+            </h3>
+            <button @click="closeProjectModal" class="close-btn">×</button>
+          </div>
+        </div>
+
+        <!-- 모달 바디 -->
+        <div class="modal-body">
+          <!-- 상위 프로젝트 선택 -->
+          <div class="form-group">
+            <label class="form-label">상위 프로젝트 (선택사항)</label>
+            <div class="parent-project-selection">
+              <select 
+                v-model="currentProject.parentId"
+                class="form-select"
+              >
+                <option value="">상위 프로젝트 없음</option>
+                <template v-for="project in flatProjectList" :key="project.id">
+                  <option :value="project.id">
+                    {{ getProjectIndentText(project.level) }}{{ project.name }}
+                  </option>
+                </template>
+              </select>
+            </div>
+          </div>
+
+          <!-- 프로젝트 이름 -->
+          <div class="form-group">
+            <label class="form-label">프로젝트 이름 (필수)</label>
+            <input 
+              v-model="currentProject.name"
+              type="text" 
+              placeholder="프로젝트 이름을 입력하세요" 
+              class="form-input"
+            />
+          </div>
+
+          <!-- 프로젝트 설명 -->
+          <div class="form-group">
+            <label class="form-label">프로젝트 설명</label>
+            <textarea 
+              v-model="currentProject.content"
+              placeholder="프로젝트에 대한 상세 설명을 입력하세요"
+              class="form-textarea"
+              rows="4"
+            ></textarea>
+          </div>
+
+          <!-- 시작일 -->
+          <div class="form-group">
+            <label class="form-label">시작일</label>
+            <input 
+              v-model="currentProject.startDate"
+              type="date" 
+              class="form-input"
+            />
+          </div>
+
+          <!-- 종료일 -->
+          <div class="form-group">
+            <label class="form-label">종료일</label>
+            <input 
+              v-model="currentProject.endDate"
+              type="date" 
+              class="form-input"
+            />
+          </div>
+        </div>
+
+        <!-- 모달 푸터 -->
+        <div class="modal-footer">
+          <div></div>
+          <div class="button-group">
+            <button @click="closeProjectModal" class="btn btn-secondary">취소</button>
+            <button @click="saveProject" class="btn btn-primary">저장</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- 업무 추가/수정 모달 -->
     <div v-if="showWorkModal" class="modal-overlay" @click="closeModal">
@@ -675,6 +1014,46 @@ const isDetailMode = ref(false)
 const currentWork = ref({})
 const currentWeek = ref(new Date())
 
+// 탭 메뉴 관리
+const activeTab = ref('today')
+
+// 프로젝트 페이지 관련
+const currentYear = ref(new Date().getFullYear())
+const topLevelProjects = ref([])
+const months = Array.from({ length: 12 }, (_, i) => i + 1)
+
+// 프로젝트 모달 관련
+const showProjectModal = ref(false)
+const showProjectDetailModal = ref(false)
+const isProjectEditMode = ref(false)
+const currentProject = ref({
+  name: '',
+  content: '',
+  startDate: '',
+  endDate: '',
+  parentId: null
+})
+const currentProjectDetail = ref({})
+
+// 평면화된 프로젝트 목록 (상위 프로젝트 선택용)
+const flatProjectList = computed(() => {
+  const flattenProjects = (projects, level = 0) => {
+    let result = []
+    for (const project of projects) {
+      result.push({
+        id: project.id,
+        name: project.name,
+        level: level
+      })
+      if (project.children && project.children.length > 0) {
+        result = result.concat(flattenProjects(project.children, level + 1))
+      }
+    }
+    return result
+  }
+  return flattenProjects(topLevelProjects.value)
+})
+
 // 새로운 프로젝트 선택 관련 변수들
 const projectSearchTerm = ref('')
 const expandedProjectNodes = ref(new Set())
@@ -876,6 +1255,256 @@ const formatDate = (dateString) => {
   if (!dateString) return '-'
   const date = new Date(dateString)
   return `${date.getMonth() + 1}/${date.getDate()}`
+}
+
+// 탭 전환 함수
+const setActiveTab = (tab) => {
+  activeTab.value = tab
+  if (tab === 'project') {
+    loadTopLevelProjects()
+  }
+}
+
+// 프로젝트 레벨 들여쓰기 텍스트 생성
+const getProjectIndentText = (level) => {
+  return '　'.repeat(level * 2) + (level > 0 ? '└ ' : '')
+}
+
+// 프로젝트 추가 함수
+const addProject = () => {
+  currentProject.value = {
+    name: '',
+    content: '',
+    startDate: '',
+    endDate: '',
+    parentId: null
+  }
+  showProjectModal.value = true
+}
+
+// 프로젝트 모달 닫기
+const closeProjectModal = () => {
+  showProjectModal.value = false
+}
+
+// 프로젝트 상세 보기
+const viewProjectDetail = (project) => {
+  currentProjectDetail.value = { ...project }
+  showProjectDetailModal.value = true
+}
+
+// 프로젝트 상세 모달 닫기
+const closeProjectDetailModal = () => {
+  showProjectDetailModal.value = false
+}
+
+// 프로젝트 저장
+const saveProject = async () => {
+  try {
+    // 프로젝트 데이터 준비
+    const projectData = {
+      ...currentProject.value,
+      parentId: currentProject.value.parentId || null // 빈 문자열을 null로 변환
+    }
+    
+    // API 호출 로직
+    const response = await fetch('/api/projects', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(projectData)
+    })
+    
+    if (response.ok) {
+      console.log('프로젝트 추가 성공', projectData)
+      closeProjectModal()
+      loadTopLevelProjects() // 프로젝트 목록 새로고침
+    }
+  } catch (error) {
+    console.error('프로젝트 추가 실패:', error)
+  }
+}
+
+// 프로젝트 관련 함수들
+const changeYear = (direction) => {
+  currentYear.value += direction
+  loadTopLevelProjects()
+}
+
+const loadTopLevelProjects = async () => {
+  try {
+    // 테스트 데이터로 대체
+    topLevelProjects.value = [
+      {
+        id: 1,
+        name: "디지털 트랜스포메이션 프로젝트",
+        content: "【프로젝트 개요】\n회사 전반의 디지털 혁신을 통해 경쟁력 강화 및 지속가능한 성장 기반을 구축하는 대규모 디지털 트랜스포메이션 프로젝트입니다.\n\n【주요 목표】\n• 업무 효율성 40% 향상 및 운영비용 25% 절감\n• 고객 만족도 90% 이상 달성 및 시장 점유율 15% 확대\n• 데이터 기반 의사결정 체계 구축 및 실시간 분석 시스템 도입\n• 클라우드 인프라 전면 전환을 통한 확장성 및 안정성 확보\n\n【세부 추진 계획】\n1. 기술 인프라 현대화\n   - AWS 클라우드 마이그레이션 및 멀티 리전 구축\n   - 마이크로서비스 아키텍처 전환 및 컨테이너 오케스트레이션 도입\n   - CI/CD 파이프라인 자동화 및 DevOps 문화 정착\n\n2. 데이터 플랫폼 구축\n   - 데이터 레이크 및 데이터 웨어하우스 통합 구축\n   - 실시간 ETL 파이프라인 및 스트리밍 분석 시스템\n   - 머신러닝 모델 개발 및 AI 기반 예측 분석\n\n3. 사용자 경험 혁신\n   - 옴니채널 고객 접점 통합 플랫폼 구축\n   - 개인화 추천 엔진 및 챗봇 상담 시스템 도입\n   - 모바일 퍼스트 전략 기반 앱 및 웹 서비스 개편\n\n【예상 성과 및 ROI】\n• 연간 매출 증대: 12억원 (전년 대비 18% 증가)\n• 운영비용 절감: 8억원 (인력 효율화 및 자동화 효과)\n• 고객 획득 비용 30% 절감 및 고객 생애 가치 25% 증가\n• 시장 대응 속도 50% 향상 및 신규 비즈니스 모델 창출",
+        startDate: `${currentYear.value}-01-15`,
+        endDate: `${currentYear.value}-06-30`,
+        children: [
+          {
+            id: 11,
+            name: "UI/UX 디자인",
+            content: "사용자 중심의 디자인 방법론을 적용하여 전체적인 브랜드 아이덴티티를 재정립하고, 사용자 여정 맵핑과 와이어프레임 설계를 통해 직관적인 네비게이션 구조를 구축합니다. Adobe XD와 Figma를 활용한 고해상도 프로토타입 제작, 색상 팔레트 및 타이포그래피 가이드라인 수립, 일관된 디자인 시스템 컴포넌트 라이브러리 개발을 진행하며, A/B 테스트를 통한 사용자 반응 분석과 지속적인 디자인 개선을 수행합니다.",
+            startDate: `${currentYear.value}-01-15`,
+            endDate: `${currentYear.value}-03-31`
+          },
+          {
+            id: 12,
+            name: "프론트엔드 개발",
+            content: "최신 웹 기술 스택을 활용한 고성능 프론트엔드 애플리케이션 개발로, React 18의 Concurrent Features와 Server Components를 적극 활용하여 렌더링 성능을 최적화하고, TypeScript를 통한 타입 안전성 보장과 코드 품질 향상을 실현합니다. Webpack 5와 Vite를 활용한 번들링 최적화, Code Splitting을 통한 초기 로딩 시간 단축, Service Worker를 이용한 오프라인 지원 기능 구현, PWA 기능 도입을 통한 네이티브 앱 수준의 사용자 경험을 제공하며, 크로스 브라우저 호환성과 웹 표준 준수를 보장합니다.",
+            startDate: `${currentYear.value}-03-01`,
+            endDate: `${currentYear.value}-06-15`,
+            children: [
+              {
+                id: 121,
+                name: "컴포넌트 개발",
+                content: "재사용 가능한 UI 컴포넌트 라이브러리 구축",
+                startDate: `${currentYear.value}-03-01`,
+                endDate: `${currentYear.value}-04-30`
+              },
+              {
+                id: 122,
+                name: "통합 테스트",
+                content: "전체 시스템 통합 테스트 및 버그 수정",
+                startDate: `${currentYear.value}-05-01`,
+                endDate: `${currentYear.value}-06-15`
+              }
+            ]
+          }
+        ]
+      },
+      {
+        id: 2,
+        name: "글로벌 시장 진출 전략 수립",
+        content: "【사업 배경 및 필요성】\n국내 시장 포화 상황과 글로벌 경쟁 심화에 대응하여 해외 신규 시장 개척을 통한 매출 다변화 및 지속가능한 성장 동력 확보가 필요한 시점입니다.\n\n【목표 시장 분석 및 전략】\n• 1차 목표: 동남아시아 3개국 (베트남, 태국, 인도네시아) 진출\n• 2차 목표: 유럽 주요 시장 (독일, 프랑스, 영국) 진출 준비\n• 3차 목표: 북미 시장 진출을 위한 기반 구축\n\n【시장 진입 전략】\n1. 현지 파트너십 구축\n   - 각국 주요 유통업체 및 기술 파트너와 전략적 제휴\n   - 현지 법인 설립 및 운영 체계 구축\n   - 현지 인재 채용 및 문화 적응 프로그램 운영\n\n2. 제품 현지화 및 차별화\n   - 현지 소비자 니즈 분석 및 제품 커스터마이징\n   - 현지 규제 및 인증 요구사항 대응\n   - 다국어 지원 및 결제 시스템 현지화\n\n3. 마케팅 및 브랜드 전략\n   - 현지 문화에 맞는 브랜딩 및 마케팅 캠페인 전개\n   - 디지털 마케팅 채널 최적화 및 인플루언서 협업\n   - 현지 전시회 참가 및 PR 활동 강화\n\n【예상 투자비용 및 수익성 분석】\n• 총 투자비용: 45억원 (3년간)\n  - 현지법인 설립 및 인프라: 15억원\n  - 마케팅 및 브랜딩: 18억원\n  - 제품 현지화 및 개발: 12억원\n\n• 예상 수익: 3년차 연매출 80억원 달성\n• ROI: 3년차 기준 177% (투자 회수 기간 2.2년)\n• 고용 창출: 현지 직접고용 120명, 간접고용 300명",
+        startDate: `${currentYear.value}-04-01`,
+        endDate: `${currentYear.value}-10-31`,
+        children: [
+          {
+            id: 21,
+            name: "기획 및 설계",
+            content: "앱 기능 정의 및 아키텍처 설계",
+            startDate: `${currentYear.value}-04-01`,
+            endDate: `${currentYear.value}-05-15`
+          },
+          {
+            id: 22,
+            name: "개발 및 테스트",
+            content: "React Native 기반 앱 개발 및 QA 테스트",
+            startDate: `${currentYear.value}-05-16`,
+            endDate: `${currentYear.value}-09-30`
+          }
+        ]
+      },
+      {
+        id: 3,
+        name: "ESG 경영 체계 구축 및 탄소중립 달성",
+        content: "【ESG 경영 전략 및 비전】\n지속가능한 기업 경영을 위한 환경(E), 사회(S), 지배구조(G) 통합 관리 체계를 구축하여 2030년 탄소중립 달성 및 ESG 우수 기업으로 도약하는 것을 목표로 합니다.\n\n【환경(Environmental) 전략】\n• 탄소배출 단계적 감축 계획\n  - 2025년: 현 대비 30% 감축 (Scope 1, 2 기준)\n  - 2028년: 현 대비 70% 감축\n  - 2030년: 탄소중립 달성 (Net-Zero)\n\n• 친환경 에너지 전환\n  - 재생에너지 사용 비율 2025년 50%, 2030년 100% 달성\n  - 태양광 발전 설비 도입 및 에너지 효율성 개선\n  - 전기차 도입 및 친환경 물류 시스템 구축\n\n• 순환경제 모델 구축\n  - 제품 생산부터 폐기까지 전 과정 친환경화\n  - 재활용 소재 사용 비율 60% 이상 달성\n  - 포장재 플라스틱 사용량 80% 감축\n\n【사회(Social) 가치 창출】\n• 일자리 창출 및 상생협력\n  - 청년층 채용 확대: 연간 300명 이상\n  - 협력사 ESG 역량 강화 프로그램 운영\n  - 지역사회 상생 프로젝트 연 50건 이상 추진\n\n• 다양성 및 포용성 강화\n  - 여성 관리직 비율 30% 이상 달성\n  - 장애인 고용 확대 및 근무환경 개선\n  - 세대 간 소통 프로그램 및 멘토링 활성화\n\n【거버넌스(Governance) 체계 혁신】\n• 투명한 의사결정 구조\n  - 이사회 독립성 강화 및 전문성 제고\n  - ESG 위원회 신설 및 정기 모니터링 체계 구축\n  - 리스크 관리 시스템 고도화\n\n【예상 투자 및 경제적 효과】\n• 총 투자비용: 200억원 (5년간)\n• 정부 지원금 및 세제혜택: 35억원\n• ESG 채권 발행을 통한 자금조달: 100억원\n• 브랜드 가치 상승 효과: 연간 50억원\n• 우수 인재 유치 및 이직률 감소 효과: 연간 15억원",
+        startDate: `${currentYear.value}-07-01`,
+        endDate: `${currentYear.value}-12-31`,
+        children: [
+          {
+            id: 31,
+            name: "데이터 파이프라인 구축",
+            content: "ETL 프로세스 및 데이터 웨어하우스 설계",
+            startDate: `${currentYear.value}-07-01`,
+            endDate: `${currentYear.value}-09-30`
+          },
+          {
+            id: 32,
+            name: "분석 대시보드 개발",
+            content: "실시간 데이터 시각화 및 리포팅 시스템",
+            startDate: `${currentYear.value}-10-01`,
+            endDate: `${currentYear.value}-12-31`
+          }
+        ]
+      },
+      {
+        id: 4,
+        name: "신사업 발굴 및 R&D 혁신센터 구축",
+        content: "【신사업 발굴 전략 및 목표】\n미래 성장 동력 확보를 위한 신사업 기회 발굴 및 혁신적 R&D 역량 구축을 통해 차세대 사업 포트폴리오를 완성하고 지속가능한 경쟁 우위를 확보합니다.\n\n【핵심 신사업 영역 및 로드맵】\n• 인공지능 및 빅데이터 활용 서비스\n  - AI 기반 맞춤형 추천 플랫폼 개발\n  - 산업용 IoT 및 예측 유지보수 솔루션\n  - 자연어 처리 기반 고객 서비스 자동화\n\n• 바이오헬스케어 융합 기술\n  - 웨어러블 헬스케어 디바이스 개발\n  - 개인 맞춤형 건강관리 앱 및 플랫폼\n  - 의료 빅데이터 분석 및 진단 보조 시스템\n\n• 친환경 에너지 및 소재 기술\n  - 차세대 배터리 소재 및 에너지 저장 시스템\n  - 친환경 포장재 및 생분해성 소재 개발\n  - 태양광 효율 향상 기술 및 스마트 그리드 솔루션\n\n【R&D 혁신센터 구축 계획】\n• 첨단 연구시설 및 인프라\n  - 총 면적 5,000㎡ 규모의 통합 연구센터 건립\n  - AI/클라우드 컴퓨팅 인프라 및 고성능 서버 구축\n  - 바이오랩, 소재분석실, 시제품 제작실 등 전문 시설\n\n• 우수 연구인력 확보 및 육성\n  - 국내외 박사급 연구인력 50명 확보\n  - 산학협력 프로그램 및 인턴십 확대\n  - 연구성과 기반 인센티브 및 스톡옵션 제도 도입\n\n• 오픈 이노베이션 생태계 구축\n  - 스타트업 인큐베이팅 및 CVC(Corporate Venture Capital) 운영\n  - 대학 및 연구소와의 공동연구 프로젝트 확대\n  - 글로벌 기술 파트너십 및 라이선싱 계약 체결\n\n【예상 성과 및 경제적 파급효과】\n• 신사업 매출 기여도: 5년 내 전체 매출의 25% 달성\n• 특허 출원 및 등록: 연간 30건 이상\n• 기술이전 및 라이선싱 수익: 연간 20억원\n• 고급 일자리 창출: 직접 200명, 간접 500명\n• 지역 경제 활성화 효과: 연간 100억원 이상\n\n【위험 관리 및 성공 요인】\n• 기술 트렌드 변화에 대한 지속적 모니터링\n• 단계별 마일스톤 설정 및 성과 평가 체계 구축\n• 실패 프로젝트에 대한 신속한 의사결정 및 자원 재배치\n• 글로벌 시장 진출을 위한 국제 표준 및 인증 준비",
+        startDate: `${currentYear.value}-02-01`,
+        endDate: `${currentYear.value}-04-30`,
+        children: []
+      }
+    ]
+  } catch (error) {
+    console.error('프로젝트 로드 실패:', error)
+  }
+}
+
+
+const isProjectActiveInMonth = (project, month) => {
+  if (!project.startDate || !project.endDate) return false
+  
+  const startDate = new Date(project.startDate)
+  const endDate = new Date(project.endDate)
+  const targetMonth = new Date(currentYear.value, month - 1, 1)
+  const nextMonth = new Date(currentYear.value, month, 0)
+  
+  return startDate <= nextMonth && endDate >= targetMonth
+}
+
+const getProjectBarForMonth = (project, month) => {
+  return isProjectActiveInMonth(project, month)
+}
+
+const getProjectBarStyle = (project, month, level = 0) => {
+  if (!project.startDate || !project.endDate) return {}
+  
+  const startDate = new Date(project.startDate)
+  const endDate = new Date(project.endDate)
+  const monthStart = new Date(currentYear.value, month - 1, 1)
+  const monthEnd = new Date(currentYear.value, month, 0)
+  
+  // 프로젝트가 이달에 시작하거나 끝나는지 확인
+  const projectStartMonth = startDate.getMonth() + 1
+  const projectStartYear = startDate.getFullYear()
+  const projectEndMonth = endDate.getMonth() + 1
+  const projectEndYear = endDate.getFullYear()
+  
+  const startsThisMonth = (projectStartYear === currentYear.value && projectStartMonth === month)
+  const endsThisMonth = (projectEndYear === currentYear.value && projectEndMonth === month)
+  
+  
+  // 레벨별 색상 및 높이 설정
+  const levelStyles = {
+    0: { backgroundColor: '#667eea', height: '12px' }, // 보라색
+    1: { backgroundColor: '#48bb78', height: '10px' }, // 초록색
+    2: { backgroundColor: '#ed8936', height: '8px' },  // 주황색
+    3: { backgroundColor: '#e53e3e', height: '6px' }   // 빨간색
+  }
+  
+  let style = {
+    width: 'calc(100% + 1px)',
+    margin: '2px 0',
+    ...levelStyles[level] || levelStyles[0]
+  }
+  
+  // 시작과 끝에 따른 모서리 처리 - 연속적인 막대 모양
+  if (startsThisMonth && endsThisMonth) {
+    // 이달에 시작하고 끝남
+    style.borderRadius = '6px'
+    style.width = '100%'
+  } else if (startsThisMonth && !endsThisMonth) {
+    // 이달에 시작하지만 다음달로 계속
+    style.borderRadius = '6px 0 0 6px'
+    style.marginRight = '-1px'
+  } else if (!startsThisMonth && endsThisMonth) {
+    // 이전달에서 시작해서 이달에 끝남
+    style.borderRadius = '0 6px 6px 0'
+    style.marginLeft = '-1px'
+    style.width = '100%'
+  } else if (!startsThisMonth && !endsThisMonth) {
+    // 중간 달 (양쪽 모두 연결)
+    style.borderRadius = '0'
+    style.marginLeft = '-1px'
+    style.marginRight = '-1px'
+  }
+  
+  return style
 }
 
 // 날짜 비교를 위한 포맷팅 함수 (YYYY-MM-DD)
@@ -2024,6 +2653,39 @@ onMounted(async () => {
   background: #ff5252;
 }
 
+/* 네비게이션 메뉴 스타일 */
+.nav-menu {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  display: flex;
+  gap: 0;
+}
+
+.nav-item {
+  background: none;
+  border: none;
+  padding: 1rem 2rem;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #64748b;
+  border-bottom: 3px solid transparent;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.nav-item:hover {
+  color: #667eea;
+  background: rgba(102, 126, 234, 0.05);
+}
+
+.nav-item.active {
+  color: #667eea;
+  border-bottom-color: #667eea;
+  background: rgba(102, 126, 234, 0.1);
+}
+
 /* 메인 컨텐츠 */
 .dashboard-main {
   max-width: 1400px;
@@ -2032,6 +2694,473 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 2rem;
+}
+
+/* 프로젝트 페이지 스타일 */
+.project-section {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  padding: 2rem;
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.year-selector {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.year-btn {
+  background: #667eea;
+  color: white;
+  border: none;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.2s;
+}
+
+.year-btn:hover {
+  background: #5a67d8;
+}
+
+.current-year {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #2d3748;
+  min-width: 60px;
+  text-align: center;
+}
+
+.project-timeline {
+  margin-top: 2rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.timeline-header {
+  display: grid;
+  grid-template-columns: 180px 600px 1fr;
+  background: #f8fafc;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.project-name-col {
+  padding: 1rem;
+  font-weight: 600;
+  color: #2d3748;
+  background: #edf2f7;
+  border-right: 1px solid #e2e8f0;
+}
+
+.project-description-col {
+  padding: 1rem;
+  font-weight: 600;
+  color: #2d3748;
+  background: #edf2f7;
+  border-right: 1px solid #e2e8f0;
+}
+
+.months-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+}
+
+.month-header {
+  padding: 1rem 0.25rem;
+  text-align: center;
+  font-weight: 500;
+  color: #4a5568;
+  font-size: 0.8rem;
+  border-right: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.month-header:last-child {
+  border-right: none;
+}
+
+
+.timeline-body {
+  background: white;
+}
+
+.project-row {
+  display: grid;
+  grid-template-columns: 180px 600px 1fr;
+  border-bottom: 1px solid #e2e8f0;
+  transition: background 0.2s;
+}
+
+.project-row:hover {
+  background: #f7fafc;
+  cursor: pointer;
+}
+
+.project-row.sub-project {
+  background: #f8fafc;
+}
+
+.project-row.sub-project:hover {
+  background: #edf2f7;
+}
+
+.project-name-cell {
+  padding: 1rem;
+  border-right: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.project-description-cell {
+  padding: 1rem;
+  border-right: 1px solid #e2e8f0;
+  display: flex;
+  align-items: flex-start;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* 설명 칸 커스텀 스크롤바 - 투명하고 호버시에만 표시 */
+.project-description-cell::-webkit-scrollbar {
+  width: 6px;
+}
+
+.project-description-cell::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.project-description-cell::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 3px;
+  transition: background 0.3s ease;
+}
+
+.project-description-cell:hover::-webkit-scrollbar-thumb {
+  background: rgba(160, 174, 192, 0.6);
+}
+
+.project-description-cell::-webkit-scrollbar-thumb:hover {
+  background: rgba(160, 174, 192, 0.8);
+}
+
+.hierarchy-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.hierarchy-indicator.level-0 {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border: 2px solid #667eea;
+}
+
+.hierarchy-indicator.level-1 {
+  background: transparent;
+  border: 2px solid #48bb78;
+  margin-left: 20px;
+}
+
+.hierarchy-indicator.level-2 {
+  background: transparent;
+  border: 2px solid #ed8936;
+  margin-left: 40px;
+}
+
+.hierarchy-indicator.level-3 {
+  background: transparent;
+  border: 2px solid #e53e3e;
+  margin-left: 60px;
+}
+
+/* 카테고리 인디케이터 래퍼 */
+.category-indicator-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-right: 1rem;
+}
+
+/* 프로젝트 상세 모달 스타일 */
+.project-detail-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.project-detail-content {
+  background: white;
+  padding: 2rem;
+}
+
+.project-info-item {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  transition: all 0.2s ease;
+}
+
+.project-info-item:hover {
+  background: #f7fafc;
+  border-color: #667eea;
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.1);
+}
+
+.project-info-label {
+  font-weight: 600;
+  color: #4a5568;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  background: linear-gradient(90deg, rgba(102, 126, 234, 0.05), transparent);
+  border-left: 3px solid #667eea;
+  padding-left: 0.75rem;
+  border-radius: 0 4px 4px 0;
+}
+
+.label-icon {
+  font-size: 1.1rem;
+  opacity: 0.8;
+  transition: all 0.2s ease;
+  transform: scale(1);
+}
+
+.project-info-item:hover .label-icon {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.label-text {
+  flex: 1;
+}
+
+.project-info-content {
+  color: #2d3748;
+  font-weight: 500;
+}
+
+.sub-projects-section {
+  margin-top: 1.5rem;
+}
+
+.sub-projects-count {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin-left: auto;
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
+}
+
+.info-header,
+.description-header,
+.sub-projects-header {
+  background: transparent;
+  color: #2d3748;
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.info-icon {
+  font-size: 1.2rem;
+  opacity: 0.9;
+}
+
+.info-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+  flex: 1;
+}
+
+.count-badge {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+
+
+.period-value {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.date-badge {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
+  transition: all 0.2s ease;
+}
+
+.date-badge:hover {
+  background: linear-gradient(135deg, #764ba2, #667eea);
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+  transform: translateY(-1px);
+}
+
+.date-separator {
+  color: #718096;
+  font-weight: 600;
+}
+
+.description-content {
+  padding: 1.5rem;
+}
+
+.project-detail-description {
+  white-space: pre-line;
+  line-height: 1.7;
+  color: #4a5568;
+  font-size: 0.95rem;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  margin: 0;
+}
+
+.sub-projects-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-left: 1rem;
+}
+
+.sub-project-item {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sub-project-item:hover {
+  background: #f7fafc;
+  border-color: #667eea;
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.1);
+}
+
+.sub-project-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.sub-project-name {
+  font-weight: 600;
+  color: #2d3748;
+  flex: 1;
+}
+
+.sub-project-period {
+  font-size: 0.85rem;
+  color: #718096;
+  background: #edf2f7;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+.sub-project-description {
+  color: #4a5568;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  margin-left: 1.75rem;
+}
+
+.project-name {
+  font-weight: 600;
+  color: #2d3748;
+  font-size: 1rem;
+  line-height: 1.3;
+}
+
+.sub-project .project-name {
+  font-size: 0.9rem;
+  color: #4a5568;
+}
+
+.project-description {
+  color: #4a5568;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  white-space: pre-line;
+  word-wrap: break-word;
+  flex: 1;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.timeline-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  align-items: center;
+  position: relative;
+}
+
+.timeline-grid::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-image: repeating-linear-gradient(
+    to right,
+    transparent 0,
+    transparent calc(100% / 12 - 1px),
+    #e2e8f0 calc(100% / 12 - 1px),
+    #e2e8f0 calc(100% / 12)
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.timeline-cell {
+  padding: 0;
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  position: relative;
+  overflow: visible;
+}
+
+.project-bar {
+  border-radius: 6px;
+  margin: 0;
+  position: relative;
+  z-index: 1;
 }
 
 /* 섹션 공통 */

@@ -1826,6 +1826,8 @@ const getWeekendWorks = async (startDate, endDate) => {
 // 주간 데이터 업데이트
 const updateWeeklyData = async () => {
   const monday = getKoreanMonday(currentWeek.value)
+  monday.setHours(0, 0, 0, 0) // 월요일 00:00:00.000으로 설정
+  
   const sunday = new Date(monday)
   sunday.setDate(monday.getDate() + 6)
   sunday.setHours(23, 59, 59, 999)
@@ -1908,6 +1910,45 @@ const closeModal = () => {
   projectSearchTerm.value = ''
 }
 
+// 오늘의 업무 데이터 새로고침 함수
+const refreshTodayData = async () => {
+  try {
+    const response = await fetch('http://127.0.0.1:8000/api/v1/work/today')
+    
+    if (response.ok) {
+      const data = await response.json()
+      
+      // 데이터 매핑 및 화면 업데이트
+      const mappedWorks = data.map(work => ({
+        id: work.id,
+        name: work.title,
+        content: work.content,
+        categoryId: work.category_id,
+        status: work.current_status,
+        startDate: work.started_at ? work.started_at.split('T')[0] : '',
+        endDate: work.deadline ? work.deadline.split('T')[0] : '',
+        isMyWork: work.myjob,
+        categories: work.categories || []
+      }))
+      
+      todayWorks.value = mappedWorks
+      
+      // 업무들로부터 카테고리 계층구조 생성
+      const categoryHierarchy = buildCategoryHierarchyFromWorks(mappedWorks)
+      todayCategoryHierarchy.value = categoryHierarchy
+      
+      // 카테고리별 작업 목록 초기화
+      categoryWorkLists.value.clear()
+      
+      console.log('✅ 오늘의 업무 데이터 새로고침 완료')
+    } else {
+      console.error('❌ 오늘의 업무 데이터 새로고침 실패:', response.statusText)
+    }
+  } catch (error) {
+    console.error('💥 오늘의 업무 데이터 새로고침 에러:', error)
+  }
+}
+
 const saveWork = async () => {
   if (!currentWork.value.name.trim()) {
     alert('업무명을 입력해주세요.')
@@ -1974,15 +2015,11 @@ const saveWork = async () => {
       }
       
       if (response.ok) {
-        // 로컬 데이터 업데이트
-        const workIndex = todayWorks.value.findIndex(w => w.id === currentWork.value.id)
-        if (workIndex > -1) {
-          todayWorks.value[workIndex] = {
-            ...currentWork.value,
-            categoryId: categoryId
-          }
-        }
         console.log('✅ 업무 수정 성공')
+        
+        // 서버에서 최신 오늘의 업무 데이터를 다시 불러와서 동기화
+        await refreshTodayData()
+        console.log('🔄 업무 수정 후 오늘의 업무 데이터 새로고침 완료')
         
         // 완료 처리 시 주간 데이터도 업데이트
         if (currentWork.value.status === '완료') {
@@ -2021,18 +2058,9 @@ const saveWork = async () => {
         const createdWork = await response.json()
         console.log('✅ 새 업무 생성 성공:', createdWork)
         
-        // 로컬 데이터에 추가 (화면에서 바로 보이도록)
-        const newWork = {
-          id: createdWork.id,
-          name: currentWork.value.name,
-          content: currentWork.value.content,
-          categoryId: categoryId,
-          status: currentWork.value.status,
-          startDate: currentWork.value.startDate,
-          endDate: currentWork.value.endDate,
-          isMyWork: currentWork.value.isMyWork
-        }
-        todayWorks.value.push(newWork)
+        // 서버에서 최신 오늘의 업무 데이터를 다시 불러와서 동기화
+        await refreshTodayData()
+        console.log('🔄 새 업무 추가 후 오늘의 업무 데이터 새로고침 완료')
       } else {
         console.error('❌ 업무 생성 실패:', response.statusText)
         alert('업무 생성에 실패했습니다.')

@@ -13,14 +13,21 @@ export const useAuthStore = defineStore('auth', {
       this.loading = true
       this.error = null
       try {
-        // 백엔드 API 경로에 맞춰 수정
-        const response = await axios.post('http://localhost:8000/api/v1/auth/login', {
-          username,
-          password,
+        const formData = new FormData()
+        formData.append('username', username)
+        formData.append('password', password)
+        
+        const response = await axios.post('http://localhost:8000/api/v1/auth/login', formData, {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          }
         })
         
         this.token = response.data.access_token || response.data.token
         this.user = response.data.user
+        
+        console.log('🔍 로그인 응답 전체:', response.data)
+        console.log('🔍 User 객체:', this.user)
         
         // 로컬 스토리지에 토큰 저장
         localStorage.setItem('token', this.token)

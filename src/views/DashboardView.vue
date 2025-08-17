@@ -5,7 +5,7 @@
       <div class="header-content">
         <h1>손수레</h1>
         <div class="user-info">
-          <span>안녕하세요! 사용자님</span>
+          <span>안녕하세요! {{ auth.user?.id || 'User' }}님</span>
           <button @click="logout" class="logout-btn">로그아웃</button>
         </div>
       </div>
@@ -116,7 +116,7 @@
                     </div>
                     <div class="table-cell">{{ formatDate(work.startDate) }}</div>
                     <div class="table-cell">{{ formatDate(work.endDate) }}</div>
-                    <div class="table-cell">
+                    <div class="table-cell my-work-cell">
                       <input 
                         type="checkbox" 
                         :checked="work.isMyWork" 
@@ -124,6 +124,16 @@
                         readonly
                         @click.prevent
                       >
+                      <button 
+                        v-if="work.isMyWork"
+                        @click="deleteWork(work)"
+                        class="delete-btn"
+                        title="업무 삭제"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                      </button>
                     </div>
                   </div>
                 </template>
@@ -181,7 +191,7 @@
                             </div>
                       <div class="table-cell">{{ formatDate(work.startDate) }}</div>
                       <div class="table-cell">{{ formatDate(work.endDate) }}</div>
-                      <div class="table-cell">
+                      <div class="table-cell my-work-cell">
                         <input 
                           type="checkbox" 
                           :checked="work.isMyWork" 
@@ -189,6 +199,16 @@
                           readonly
                           @click.prevent
                         >
+                        <button 
+                          v-if="work.isMyWork"
+                          @click="deleteWork(work)"
+                          class="delete-btn"
+                          title="업무 삭제"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                          </svg>
+                        </button>
                       </div>
                     </div>
                     </template>
@@ -263,7 +283,7 @@
                             </div>
                             <div class="table-cell">{{ formatDate(work.startDate) }}</div>
                             <div class="table-cell">{{ formatDate(work.endDate) }}</div>
-                            <div class="table-cell">
+                            <div class="table-cell my-work-cell">
                               <input 
                                 type="checkbox" 
                                 :checked="work.isMyWork" 
@@ -271,6 +291,16 @@
                                 readonly
                                 @click.prevent
                               >
+                              <button 
+                                v-if="work.isMyWork"
+                                @click="deleteWork(work)"
+                                class="delete-btn"
+                                title="업무 삭제"
+                              >
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                              </button>
                             </div>
                           </div>
                         </template>
@@ -345,7 +375,7 @@
                                 </div>
                                 <div class="table-cell">{{ formatDate(work.startDate) }}</div>
                                 <div class="table-cell">{{ formatDate(work.endDate) }}</div>
-                                <div class="table-cell">
+                                <div class="table-cell my-work-cell">
                                   <input 
                                     type="checkbox" 
                                     :checked="work.isMyWork" 
@@ -353,6 +383,16 @@
                                     readonly
                                     @click.prevent
                                   >
+                                  <button 
+                                    v-if="work.isMyWork"
+                                    @click="deleteWork(work)"
+                                    class="delete-btn"
+                                    title="업무 삭제"
+                                  >
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                      <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                  </button>
                                 </div>
                               </div>
                             </template>
@@ -1003,6 +1043,7 @@ import { useAuthStore } from '../stores/auth'
 import { useRouter } from 'vue-router'
 import TreeNode from '../components/TreeNode.vue'
 import draggable from 'vuedraggable'
+import axios from 'axios'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -1308,19 +1349,15 @@ const saveProject = async () => {
     }
     
     // API 호출 로직
-    const response = await fetch('/api/projects', {
-      method: 'POST',
+    const response = await axios.post('/api/projects', projectData, {
       headers: {
         'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(projectData)
+      }
     })
     
-    if (response.ok) {
-      console.log('프로젝트 추가 성공', projectData)
-      closeProjectModal()
-      loadTopLevelProjects() // 프로젝트 목록 새로고침
-    }
+    console.log('프로젝트 추가 성공', projectData)
+    closeProjectModal()
+    loadTopLevelProjects() // 프로젝트 목록 새로고침
   } catch (error) {
     console.error('프로젝트 추가 실패:', error)
   }
@@ -1809,14 +1846,8 @@ const getWeekendWorks = async (startDate, endDate) => {
       end: endDate
     })
     
-    const response = await fetch(`http://127.0.0.1:8000/api/v1/work/weekend?${params}`)
-    if (response.ok) {
-      const data = await response.json()
-      return data
-    } else {
-      console.error('❌ 주간 완료 업무 API 에러:', response.statusText)
-      return []
-    }
+    const response = await axios.get(`http://127.0.0.1:8000/api/v1/work/weekend?${params}`)
+    return response.data
   } catch (error) {
     console.error('💥 주간 완료 업무 API 호출 에러:', error)
     return []
@@ -1913,37 +1944,32 @@ const closeModal = () => {
 // 오늘의 업무 데이터 새로고침 함수
 const refreshTodayData = async () => {
   try {
-    const response = await fetch('http://127.0.0.1:8000/api/v1/work/today')
+    const response = await axios.get('http://127.0.0.1:8000/api/v1/work/today')
+    const data = response.data
     
-    if (response.ok) {
-      const data = await response.json()
-      
-      // 데이터 매핑 및 화면 업데이트
-      const mappedWorks = data.map(work => ({
-        id: work.id,
-        name: work.title,
-        content: work.content,
-        categoryId: work.category_id,
-        status: work.current_status,
-        startDate: work.started_at ? work.started_at.split('T')[0] : '',
-        endDate: work.deadline ? work.deadline.split('T')[0] : '',
-        isMyWork: work.myjob,
-        categories: work.categories || []
-      }))
-      
-      todayWorks.value = mappedWorks
-      
-      // 업무들로부터 카테고리 계층구조 생성
-      const categoryHierarchy = buildCategoryHierarchyFromWorks(mappedWorks)
-      todayCategoryHierarchy.value = categoryHierarchy
-      
-      // 카테고리별 작업 목록 초기화
-      categoryWorkLists.value.clear()
-      
-      console.log('✅ 오늘의 업무 데이터 새로고침 완료')
-    } else {
-      console.error('❌ 오늘의 업무 데이터 새로고침 실패:', response.statusText)
-    }
+    // 데이터 매핑 및 화면 업데이트
+    const mappedWorks = data.map(work => ({
+      id: work.id,
+      name: work.title,
+      content: work.content,
+      categoryId: work.category_id,
+      status: work.current_status,
+      startDate: work.started_at ? work.started_at.split('T')[0] : '',
+      endDate: work.deadline ? work.deadline.split('T')[0] : '',
+      isMyWork: work.myjob,
+      categories: work.categories || []
+    }))
+    
+    todayWorks.value = mappedWorks
+    
+    // 업무들로부터 카테고리 계층구조 생성
+    const categoryHierarchy = buildCategoryHierarchyFromWorks(mappedWorks)
+    todayCategoryHierarchy.value = categoryHierarchy
+    
+    // 카테고리별 작업 목록 초기화
+    categoryWorkLists.value.clear()
+    
+    console.log('✅ 오늘의 업무 데이터 새로고침 완료')
   } catch (error) {
     console.error('💥 오늘의 업무 데이터 새로고침 에러:', error)
   }
@@ -1970,8 +1996,7 @@ const saveWork = async () => {
         // 완료 처리용 API 호출
         console.log(`📡 모달에서 업무 완료 API 호출 - 업무 ID: ${currentWork.value.id}`)
         
-        response = await fetch(`http://127.0.0.1:8000/api/v1/work/end/${currentWork.value.id}`, {
-          method: 'PUT',
+        response = await axios.put(`http://127.0.0.1:8000/api/v1/work/end/${currentWork.value.id}`, null, {
           headers: {
             'Content-Type': 'application/json'
           }
@@ -1992,44 +2017,25 @@ const saveWork = async () => {
         console.log('📋 업무 수정 전송 데이터:', updateData)
         console.log('📋 업무 수정 JSON 문자열:', JSON.stringify(updateData, null, 2))
         
-        response = await fetch(`http://127.0.0.1:8000/api/v1/work/work/${currentWork.value.id}`, {
-          method: 'PUT',
+        response = await axios.put(`http://127.0.0.1:8000/api/v1/work/work/${currentWork.value.id}`, updateData, {
           headers: {
             'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(updateData)
+          }
         })
         
         console.log('📡 업무 수정 응답 상태:', response.status)
-        
-        if (!response.ok) {
-          const errorText = await response.text()
-          console.error('❌ 업무 수정 응답 에러 내용:', errorText)
-          try {
-            const errorJson = JSON.parse(errorText)
-            console.error('❌ 업무 수정 파싱된 에러 데이터:', errorJson)
-          } catch (e) {
-            console.error('❌ 업무 수정 에러 응답을 JSON으로 파싱 실패')
-          }
-        }
       }
       
-      if (response.ok) {
-        console.log('✅ 업무 수정 성공')
-        
-        // 서버에서 최신 오늘의 업무 데이터를 다시 불러와서 동기화
-        await refreshTodayData()
-        console.log('🔄 업무 수정 후 오늘의 업무 데이터 새로고침 완료')
-        
-        // 완료 처리 시 주간 데이터도 업데이트
-        if (currentWork.value.status === '완료') {
-          await updateWeeklyData()
-          console.log('🔄 모달에서 주간 완료 업무 데이터 업데이트됨')
-        }
-      } else {
-        console.error('❌ 업무 수정 실패:', response.statusText)
-        alert('업무 수정에 실패했습니다.')
-        return
+      console.log('✅ 업무 수정 성공')
+      
+      // 서버에서 최신 오늘의 업무 데이터를 다시 불러와서 동기화
+      await refreshTodayData()
+      console.log('🔄 업무 수정 후 오늘의 업무 데이터 새로고침 완료')
+      
+      // 완료 처리 시 주간 데이터도 업데이트
+      if (currentWork.value.status === '완료') {
+        await updateWeeklyData()
+        console.log('🔄 모달에서 주간 완료 업무 데이터 업데이트됨')
       }
     } else {
       // 새 업무 추가 - POST 요청
@@ -2046,26 +2052,18 @@ const saveWork = async () => {
       
       console.log('📡 새 업무 데이터:', newWorkData)
       
-      const response = await fetch('http://127.0.0.1:8000/api/v1/work', {
-        method: 'POST',
+      const response = await axios.post('http://127.0.0.1:8000/api/v1/work', newWorkData, {
         headers: {
           'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(newWorkData)
+        }
       })
       
-      if (response.ok) {
-        const createdWork = await response.json()
-        console.log('✅ 새 업무 생성 성공:', createdWork)
-        
-        // 서버에서 최신 오늘의 업무 데이터를 다시 불러와서 동기화
-        await refreshTodayData()
-        console.log('🔄 새 업무 추가 후 오늘의 업무 데이터 새로고침 완료')
-      } else {
-        console.error('❌ 업무 생성 실패:', response.statusText)
-        alert('업무 생성에 실패했습니다.')
-        return
-      }
+      const createdWork = response.data
+      console.log('✅ 새 업무 생성 성공:', createdWork)
+      
+      // 서버에서 최신 오늘의 업무 데이터를 다시 불러와서 동기화
+      await refreshTodayData()
+      console.log('🔄 새 업무 추가 후 오늘의 업무 데이터 새로고침 완료')
     }
   } catch (error) {
     console.error('💥 API 호출 에러:', error)
@@ -2076,15 +2074,34 @@ const saveWork = async () => {
   closeModal()
 }
 
-const deleteWork = () => {
-  if (!isEditMode.value) return
+const deleteWork = async (work) => {
+  // 삭제 확인 경고창
+  const confirmed = confirm(`"${work.name}" 업무를 정말 삭제하시겠습니까?\n\n삭제된 업무는 복구할 수 없습니다.`)
   
-  const workIndex = todayWorks.value.findIndex(w => w.id === currentWork.value.id)
-  if (workIndex > -1) {
-    todayWorks.value.splice(workIndex, 1)
+  if (!confirmed) {
+    return // 사용자가 취소한 경우
   }
   
-  closeModal()
+  try {
+    // API 호출 - PUT 방식으로 삭제
+    console.log(`📡 업무 삭제 API 호출 - 업무 ID: ${work.id}`)
+    
+    const response = await axios.put(`http://127.0.0.1:8000/api/v1/work/delete/${work.id}`, null, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    
+    console.log('✅ 업무 삭제 성공')
+    
+    // 오늘의 업무 데이터 새로고침
+    await refreshTodayData()
+    console.log('🔄 업무 삭제 후 오늘의 업무 데이터 새로고침 완료')
+    
+  } catch (error) {
+    console.error('💥 업무 삭제 API 에러:', error)
+    alert('업무 삭제 중 오류가 발생했습니다.')
+  }
 }
 
 // 편집 버튼 클릭 시 편집 모드로 전환
@@ -2283,26 +2300,22 @@ const loadCategories = async (parentId = null, level = 0) => {
   
   try {
     categoryLoadingStates.value.set(parentId || 'root', true)
-    const response = await fetch(endpoint)
-    if (response.ok) {
-      const data = await response.json()
-      
-      const mappedData = data.map(cat => ({
-        id: cat.id,
-        name: cat.name,
-        level: level,
-        parentId: cat.parent_id || null,
-        expanded: false,
-        children: [], // 초기에는 빈 배열
-        hasChildren: cat.has_children !== false, // API에서 has_children 필드가 없으면 true로 가정
-        loaded: false // 하위 카테고리 로드 여부
-      }))
-      
-      console.log('✅ 매핑된 카테고리 데이터:', mappedData)
-      return mappedData
-    } else {
-      console.error('❌ API 응답 실패:', response.status, response.statusText)
-    }
+    const response = await axios.get(endpoint)
+    const data = response.data
+    
+    const mappedData = data.map(cat => ({
+      id: cat.id,
+      name: cat.name,
+      level: level,
+      parentId: cat.parent_id || null,
+      expanded: false,
+      children: [], // 초기에는 빈 배열
+      hasChildren: cat.has_children !== false, // API에서 has_children 필드가 없으면 true로 가정
+      loaded: false // 하위 카테고리 로드 여부
+    }))
+    
+    console.log('✅ 매핑된 카테고리 데이터:', mappedData)
+    return mappedData
   } catch (error) {
     console.error('💥 카테고리 로드 실패:', error)
   } finally {
@@ -2461,8 +2474,7 @@ const changeWorkStatus = async (work, newStatus, statusClass) => {
       // 완료 처리용 API 호출
       console.log(`📡 업무 완료 API 호출 - 업무 ID: ${work.id}`)
       
-      response = await fetch(`http://127.0.0.1:8000/api/v1/work/end/${work.id}`, {
-        method: 'PUT',
+      response = await axios.put(`http://127.0.0.1:8000/api/v1/work/end/${work.id}`, null, {
         headers: {
           'Content-Type': 'application/json'
         }
@@ -2494,42 +2506,24 @@ const changeWorkStatus = async (work, newStatus, statusClass) => {
       console.log('📋 전송 데이터:', updateData)
       console.log('📋 JSON 문자열:', JSON.stringify(updateData, null, 2))
       
-      response = await fetch(`http://127.0.0.1:8000/api/v1/work/work/${work.id}`, {
-        method: 'PUT',
+      response = await axios.put(`http://127.0.0.1:8000/api/v1/work/work/${work.id}`, updateData, {
         headers: {
           'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(updateData)
+        }
       })
       
       console.log('📡 응답 상태:', response.status)
       console.log('📡 응답 헤더:', response.headers)
-      
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error('❌ 응답 에러 내용:', errorText)
-        try {
-          const errorJson = JSON.parse(errorText)
-          console.error('❌ 파싱된 에러 데이터:', errorJson)
-        } catch (e) {
-          console.error('❌ 에러 응답을 JSON으로 파싱 실패')
-        }
-      }
     }
     
-    if (response.ok) {
-      // 성공 시 로컬 상태 업데이트
-      work.status = newStatus
-      console.log(`✅ 상태 변경 성공: ${work.name} → ${newStatus}`)
-      
-      // 완료 처리 시 주간 데이터도 업데이트
-      if (newStatus === '완료') {
-        await updateWeeklyData()
-        console.log('🔄 주간 완료 업무 데이터 업데이트됨')
-      }
-    } else {
-      console.error('❌ 상태 변경 실패:', response.statusText)
-      alert('상태 변경에 실패했습니다.')
+    // 성공 시 로컬 상태 업데이트
+    work.status = newStatus
+    console.log(`✅ 상태 변경 성공: ${work.name} → ${newStatus}`)
+    
+    // 완료 처리 시 주간 데이터도 업데이트
+    if (newStatus === '완료') {
+      await updateWeeklyData()
+      console.log('🔄 주간 완료 업무 데이터 업데이트됨')
     }
   } catch (error) {
     console.error('💥 상태 변경 API 에러:', error)
@@ -2547,6 +2541,7 @@ const logout = () => {
 
 onMounted(async () => {
   console.log('대시보드 로드됨')
+  console.log('🔍 User 객체 구조:', auth.user)
   
   // 외부 클릭 시 드롭다운 닫기
   document.addEventListener('click', (e) => {
@@ -2557,12 +2552,10 @@ onMounted(async () => {
   
   try {
     // 오늘의 업무 데이터 가져오기
-    const response = await fetch('http://127.0.0.1:8000/api/v1/work/today')
+    const response = await axios.get('http://127.0.0.1:8000/api/v1/work/today')
+    const data = response.data
     
-    if (response.ok) {
-      const data = await response.json()
-      
-      // 데이터 매핑 및 화면 업데이트
+    // 데이터 매핑 및 화면 업데이트
       const mappedWorks = data.map(work => ({
         id: work.id,
         name: work.title,
@@ -2587,34 +2580,23 @@ onMounted(async () => {
       categoryWorkLists.value.clear()
       
       // 프로젝트 선택용 최상위 카테고리 로드
-      const topCategories = await loadCategories(null, 0)
-      hierarchicalCategories.value = topCategories
-      
-    } else {
-      console.error('❌ 오늘의 업무 API 응답 실패:', response.status, response.statusText)
-    }
+      const loadedCategories = await loadCategories(null, 0)
+      hierarchicalCategories.value = loadedCategories
     
     // 주간 테이블용 최상위 카테고리 가져오기
-    const topCategoryResponse = await fetch('http://127.0.0.1:8000/api/v1/category/level0')
+    const topCategoryResponse = await axios.get('http://127.0.0.1:8000/api/v1/category/level0')
+    const topCategoryData = topCategoryResponse.data
     
-    if (topCategoryResponse.ok) {
-      const topCategoryData = await topCategoryResponse.json()
-      
-      // 주간 테이블용 데이터 매핑
-      const mappedTopCategories = topCategoryData
-        .map(cat => ({
-          id: cat.id,
-          name: cat.name,
-          color: cat.color || generateConsistentColor(cat.id) // 색상이 없으면 ID 기반 일관된 색상 생성
-        }))
-        .sort((a, b) => a.id - b.id) // ID 순으로 정렬하여 일관성 유지
-      
-      topCategories.value = mappedTopCategories // 주간 테이블 업데이트
-      
-    } else {
-      console.error('❌ 최상위 카테고리 API 에러:', topCategoryResponse.statusText)
-      // 실패 시 기본값 유지
-    }
+    // 주간 테이블용 데이터 매핑
+    const mappedTopCategories = topCategoryData
+      .map(cat => ({
+        id: cat.id,
+        name: cat.name,
+        color: cat.color || generateConsistentColor(cat.id) // 색상이 없으면 ID 기반 일관된 색상 생성
+      }))
+      .sort((a, b) => a.id - b.id) // ID 순으로 정렬하여 일관성 유지
+    
+    topCategories.value = mappedTopCategories // 주간 테이블 업데이트
     
     // 초기 주간 완료 업무 데이터 로드
     await updateWeeklyData()
@@ -4552,5 +4534,55 @@ onMounted(async () => {
     border-right: none;
     border-bottom: 1px solid #e1e5e9;
   }
+}
+
+/* 내 업무 삭제 버튼 스타일 */
+.my-work-cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.delete-btn {
+  display: none;
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: #ff6b7a;
+  color: white;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(255, 107, 122, 0.2);
+  align-items: center;
+  justify-content: center;
+}
+
+.delete-btn:hover {
+  background: #ff4757;
+  transform: translateY(-50%) scale(1.05);
+  box-shadow: 0 4px 8px rgba(255, 107, 122, 0.3);
+}
+
+/* SVG 아이콘 사용으로 ::before 불필요 */
+
+.my-work-cell:hover .delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.table-row:hover .my-work-cell .delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 </style>

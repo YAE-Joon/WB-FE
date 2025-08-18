@@ -523,6 +523,13 @@
                   <div class="project-name-cell">
                     <div class="hierarchy-indicator level-0"></div>
                     <div class="project-name">{{ project.name }}</div>
+                    <button 
+                      class="project-delete-btn"
+                      @click.stop="confirmDeleteProject(project)"
+                      title="프로젝트 삭제"
+                    >
+                      ×
+                    </button>
                   </div>
                   <div class="project-description-cell">
                     <div class="project-description">{{ project.content }}</div>
@@ -548,6 +555,13 @@
                     <div class="project-name-cell">
                       <div class="hierarchy-indicator level-1"></div>
                       <div class="project-name">{{ subProject.name }}</div>
+                      <button 
+                        class="project-delete-btn"
+                        @click.stop="confirmDeleteProject(subProject)"
+                        title="프로젝트 삭제"
+                      >
+                        ×
+                      </button>
                     </div>
                     <div class="project-description-cell">
                       <div class="project-description">{{ subProject.content }}</div>
@@ -573,6 +587,13 @@
                       <div class="project-name-cell">
                         <div class="hierarchy-indicator level-2"></div>
                         <div class="project-name">{{ subSubProject.name }}</div>
+                        <button 
+                          class="project-delete-btn"
+                          @click.stop="confirmDeleteProject(subSubProject)"
+                          title="프로젝트 삭제"
+                        >
+                          ×
+                        </button>
                       </div>
                       <div class="project-description-cell">
                         <div class="project-description">{{ subSubProject.content }}</div>
@@ -635,8 +656,18 @@
                 <span class="label-icon">🎯</span>
                 <span class="label-text">프로젝트명</span>
               </div>
-              <div class="project-info-content">{{ currentProjectDetail.name }}</div>
+              <div class="project-info-content">
+                <input 
+                  v-if="isProjectDetailEditMode"
+                  v-model="currentProjectDetail.name"
+                  type="text"
+                  class="form-input"
+                  placeholder="프로젝트명을 입력하세요"
+                />
+                <span v-else>{{ currentProjectDetail.name }}</span>
+              </div>
             </div>
+
 
             <!-- 프로젝트 기간 -->
             <div class="project-info-item">
@@ -644,10 +675,25 @@
                 <span class="label-icon">📅</span>
                 <span class="label-text">프로젝트 기간</span>
               </div>
-              <div class="project-info-content period-value">
-                <span class="date-badge">{{ formatDate(currentProjectDetail.startDate) }}</span>
-                <span class="date-separator">~</span>
-                <span class="date-badge">{{ formatDate(currentProjectDetail.endDate) }}</span>
+              <div class="project-info-content">
+                <div v-if="isProjectDetailEditMode" class="date-input-group">
+                  <input 
+                    v-model="currentProjectDetail.startDate"
+                    type="date"
+                    class="form-input date-input"
+                  />
+                  <span class="date-separator">~</span>
+                  <input 
+                    v-model="currentProjectDetail.endDate"
+                    type="date"
+                    class="form-input date-input"
+                  />
+                </div>
+                <div v-else class="period-value">
+                  <span class="date-badge">{{ formatDate(currentProjectDetail.startDate) }}</span>
+                  <span class="date-separator">~</span>
+                  <span class="date-badge">{{ formatDate(currentProjectDetail.endDate) }}</span>
+                </div>
               </div>
             </div>
 
@@ -658,8 +704,15 @@
                 <span class="label-text">프로젝트 설명</span>
               </div>
               <div class="project-info-content">
-                <div class="project-detail-description">
-                  {{ currentProjectDetail.content }}
+                <textarea 
+                  v-if="isProjectDetailEditMode"
+                  v-model="currentProjectDetail.content"
+                  class="form-textarea"
+                  placeholder="프로젝트 설명을 입력하세요"
+                  rows="4"
+                ></textarea>
+                <div v-else class="project-detail-description">
+                  {{ currentProjectDetail.content || '설명이 없습니다.' }}
                 </div>
               </div>
             </div>
@@ -698,7 +751,64 @@
         <div class="modal-footer">
           <div></div>
           <div class="button-group">
-            <button @click="closeProjectDetailModal" class="btn btn-secondary">닫기</button>
+            <button v-if="!isProjectDetailEditMode" @click="enableProjectDetailEdit" class="btn btn-primary">편집</button>
+            <button v-if="isProjectDetailEditMode" @click="saveProjectDetail" class="btn btn-success">저장</button>
+            <button v-if="isProjectDetailEditMode" @click="cancelProjectDetailEdit" class="btn btn-secondary">취소</button>
+            <button v-if="!isProjectDetailEditMode" @click="closeProjectDetailModal" class="btn btn-secondary">닫기</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 프로젝트 삭제 확인 모달 -->
+    <div v-if="showDeleteConfirmModal" class="modal-overlay" @click="closeDeleteConfirmModal">
+      <div class="modal-content delete-confirm-modal" @click.stop>
+        <!-- 모달 헤더 -->
+        <div class="modal-header">
+          <div class="modal-header-content">
+            <h3 class="modal-title">
+              <div class="title-icon">⚠️</div>
+              <span>프로젝트 삭제 확인</span>
+            </h3>
+            <button @click="closeDeleteConfirmModal" class="close-btn">×</button>
+          </div>
+        </div>
+        
+        <!-- 모달 바디 -->
+        <div class="modal-body">
+          <div class="delete-warning">
+            <div v-if="projectToDelete?.children && projectToDelete.children.length > 0">
+              <p>❌ 삭제할 수 없습니다</p>
+              <div class="project-to-delete">
+                <strong>{{ projectToDelete?.name }}</strong>
+              </div>
+              <p class="error-text">⚠️ 하위 프로젝트 {{ projectToDelete.children.length }}개가 있어서 삭제할 수 없습니다.</p>
+              <p class="info-text">💡 하위 프로젝트를 먼저 삭제해주세요.</p>
+            </div>
+            <div v-else>
+              <p>다음 프로젝트를 삭제하시겠습니까?</p>
+              <div class="project-to-delete">
+                <strong>{{ projectToDelete?.name }}</strong>
+              </div>
+              <p class="warning-text">⚠️ 이 작업은 되돌릴 수 없습니다.</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 모달 푸터 -->
+        <div class="modal-footer">
+          <div></div>
+          <div class="button-group">
+            <button @click="closeDeleteConfirmModal" class="btn btn-secondary">
+              {{ (projectToDelete?.children && projectToDelete.children.length > 0) ? '확인' : '취소' }}
+            </button>
+            <button 
+              v-if="!(projectToDelete?.children && projectToDelete.children.length > 0)"
+              @click="deleteProject" 
+              class="btn btn-danger"
+            >
+              삭제
+            </button>
           </div>
         </div>
       </div>
@@ -1076,7 +1186,9 @@ const months = Array.from({ length: 12 }, (_, i) => i + 1)
 // 프로젝트 모달 관련
 const showProjectModal = ref(false)
 const showProjectDetailModal = ref(false)
+const showDeleteConfirmModal = ref(false)
 const isProjectEditMode = ref(false)
+const isProjectDetailEditMode = ref(false)
 const currentProject = ref({
   name: '',
   content: '',
@@ -1085,6 +1197,8 @@ const currentProject = ref({
   parentId: null
 })
 const currentProjectDetail = ref({})
+const originalProjectDetail = ref({})
+const projectToDelete = ref(null)
 
 // 평면화된 프로젝트 목록 (상위 프로젝트 선택용)
 const flatProjectList = computed(() => {
@@ -1321,6 +1435,38 @@ const getProjectIndentText = (level) => {
   return '　'.repeat(level * 2) + (level > 0 ? '└ ' : '')
 }
 
+// 프로젝트 path 생성 함수
+const getProjectPath = (projectId) => {
+  if (!projectId) return ''
+  
+  const findProjectPath = (projects, targetId, currentPath = []) => {
+    for (const project of projects) {
+      const newPath = [...currentPath, project.id]
+      
+      if (project.id === targetId) {
+        return newPath
+      }
+      
+      if (project.children && project.children.length > 0) {
+        const found = findProjectPath(project.children, targetId, newPath)
+        if (found) return found
+      }
+    }
+    return null
+  }
+  
+  const pathArray = findProjectPath(topLevelProjects.value, projectId)
+  return pathArray ? '/' + pathArray.join('/') : ''
+}
+
+// 선택한 프로젝트의 level 가져오는 함수
+const getProjectLevel = (projectId) => {
+  if (!projectId) return 0
+  
+  const targetProject = flatProjectList.value.find(project => project.id === projectId)
+  return targetProject ? targetProject.level : 0
+}
+
 // 프로젝트 추가 함수
 const addProject = () => {
   currentProject.value = {
@@ -1347,25 +1493,89 @@ const viewProjectDetail = (project) => {
 // 프로젝트 상세 모달 닫기
 const closeProjectDetailModal = () => {
   showProjectDetailModal.value = false
+  isProjectDetailEditMode.value = false
+}
+
+// 프로젝트 상세 편집 모드 활성화
+const enableProjectDetailEdit = () => {
+  isProjectDetailEditMode.value = true
+  originalProjectDetail.value = { ...currentProjectDetail.value }
+}
+
+// 프로젝트 상세 편집 취소
+const cancelProjectDetailEdit = () => {
+  currentProjectDetail.value = { ...originalProjectDetail.value }
+  isProjectDetailEditMode.value = false
+}
+
+// 프로젝트 상세 저장
+const saveProjectDetail = async () => {
+  try {
+    const projectId = currentProjectDetail.value.id
+    
+    // 수정된 데이터만 전송
+    const updateData = {}
+    
+    // 변경된 필드만 포함
+    if (currentProjectDetail.value.name !== originalProjectDetail.value.name) {
+      updateData.name = currentProjectDetail.value.name
+    }
+    if (currentProjectDetail.value.content !== originalProjectDetail.value.content) {
+      updateData.content = currentProjectDetail.value.content
+    }
+    if (currentProjectDetail.value.startDate !== originalProjectDetail.value.startDate) {
+      updateData.started_at = currentProjectDetail.value.startDate || null
+    }
+    if (currentProjectDetail.value.endDate !== originalProjectDetail.value.endDate) {
+      updateData.end_at = currentProjectDetail.value.endDate || null
+    }
+    
+    // 변경사항이 있는 경우에만 API 호출
+    if (Object.keys(updateData).length > 0) {
+      console.log('전송할 수정 데이터:', updateData)
+      
+      const response = await axios.put(`http://127.0.0.1:8000/api/v1/category/category/${projectId}`, updateData, {
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+      
+      console.log('프로젝트 수정 성공', response.data)
+      loadTopLevelProjects() // 프로젝트 목록 새로고침
+    }
+    
+    isProjectDetailEditMode.value = false
+  } catch (error) {
+    console.error('프로젝트 수정 실패:', error)
+  }
 }
 
 // 프로젝트 저장
 const saveProject = async () => {
   try {
+    const parentId = currentProject.value.parentId || null
+    
     // 프로젝트 데이터 준비
     const projectData = {
-      ...currentProject.value,
-      parentId: currentProject.value.parentId || null // 빈 문자열을 null로 변환
+      name: currentProject.value.name,
+      content: currentProject.value.content,
+      parent_id: parentId,
+      path: parentId ? getProjectPath(parentId) + '/' + parentId : '',
+      level: parentId ? getProjectLevel(parentId) + 1 : 0,
+      started_at: currentProject.value.startDate || null,
+      end_at: currentProject.value.endDate || null
     }
     
+    console.log('전송할 프로젝트 데이터:', projectData)
+    
     // API 호출 로직
-    const response = await axios.post('/api/projects', projectData, {
+    const response = await axios.post('http://127.0.0.1:8000/api/v1/category/', projectData, {
       headers: {
         'Content-Type': 'application/json',
       }
     })
     
-    console.log('프로젝트 추가 성공', projectData)
+    console.log('프로젝트 추가 성공', response.data)
     closeProjectModal()
     loadTopLevelProjects() // 프로젝트 목록 새로고침
   } catch (error) {
@@ -1381,8 +1591,12 @@ const changeYear = (direction) => {
 
 const loadTopLevelProjects = async () => {
   try {
+    // 기존 데이터 초기화
+    topLevelProjects.value = []
+    
     // 새로운 categories API 호출
     console.log(`📡 연간 프로젝트 API 호출 - 연도: ${currentYear.value}`)
+    console.log(`🔗 API URL: http://127.0.0.1:8000/api/v1/category/categories?year=${currentYear.value}`)
     
     const response = await axios.get('http://127.0.0.1:8000/api/v1/category/categories', {
       params: {
@@ -1393,8 +1607,13 @@ const loadTopLevelProjects = async () => {
     const categories = response.data
     console.log('✅ 카테고리 데이터 로드 성공:', categories)
     
-    // level0 카테고리만 필터링하여 최상위 프로젝트로 설정
-    const topLevelCategories = categories.filter(category => category.level === 0)
+    // 각 카테고리의 level 값 확인
+    categories.forEach(cat => console.log(`카테고리 ${cat.name}: level=${cat.level}, parent_id=${cat.parent_id}`))
+    
+    // level0 카테고리만 필터링하여 최상위 프로젝트로 설정 (parent_id가 null인 카테고리도 포함)
+    const topLevelCategories = categories.filter(category => category.level === 0 || category.parent_id === null)
+    
+    console.log('🎯 최상위 카테고리:', topLevelCategories)
     
     // CategoryResponse 구조에 맞게 데이터 매핑
     topLevelProjects.value = topLevelCategories.map(category => ({
@@ -2567,6 +2786,51 @@ onMounted(async () => {
     console.error('💥 API 호출 에러:', error)
   }
 })
+
+// 프로젝트 삭제 확인 모달 열기
+const confirmDeleteProject = (project) => {
+  projectToDelete.value = project
+  showDeleteConfirmModal.value = true
+}
+
+// 프로젝트 삭제 확인 모달 닫기
+const closeDeleteConfirmModal = () => {
+  showDeleteConfirmModal.value = false
+  projectToDelete.value = null
+}
+
+// 프로젝트 삭제 실행
+const deleteProject = async () => {
+  try {
+    // 하위 프로젝트가 있으면 삭제 방지
+    if (projectToDelete.value.children && projectToDelete.value.children.length > 0) {
+      console.warn('⚠️ 하위 프로젝트가 있어서 삭제할 수 없습니다')
+      return
+    }
+    
+    const projectId = projectToDelete.value.id
+    console.log(`🗑️ 프로젝트 삭제 요청 - ID: ${projectId}`)
+    
+    const response = await axios.put(`http://127.0.0.1:8000/api/v1/category/delete/${projectId}`, {}, {
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    })
+    
+    console.log('✅ 프로젝트 삭제 성공', response.data)
+    closeDeleteConfirmModal()
+    loadTopLevelProjects() // 프로젝트 목록 새로고침
+  } catch (error) {
+    console.error('❌ 프로젝트 삭제 실패:', error)
+    
+    // 하위 프로젝트 존재로 인한 삭제 실패 처리
+    if (error.response && error.response.status === 400) {
+      alert('하위 프로젝트가 있어서 삭제할 수 없습니다. 하위 프로젝트를 먼저 삭제해주세요.')
+    } else {
+      alert('프로젝트 삭제 중 오류가 발생했습니다.')
+    }
+  }
+}
 </script>
 
 <style scoped>
@@ -2720,7 +2984,7 @@ onMounted(async () => {
 
 .timeline-header {
   display: grid;
-  grid-template-columns: 180px 600px 1fr;
+  grid-template-columns: 300px 500px 1fr;
   background: #f8fafc;
   border-bottom: 2px solid #e2e8f0;
 }
@@ -2769,7 +3033,7 @@ onMounted(async () => {
 
 .project-row {
   display: grid;
-  grid-template-columns: 180px 600px 1fr;
+  grid-template-columns: 300px 500px 1fr;
   border-bottom: 1px solid #e2e8f0;
   transition: background 0.2s;
 }
@@ -2793,6 +3057,38 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  position: relative;
+}
+
+/* 프로젝트 삭제 버튼 스타일 */
+.project-delete-btn {
+  position: absolute;
+  right: 0.5rem;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 16px;
+  color: #ff4757;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.2s ease;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.9), -1px -1px 2px rgba(255, 255, 255, 0.9);
+}
+
+.project-delete-btn:hover {
+  color: #ff3742;
+  transform: scale(1.2);
+  text-shadow: 1px 1px 3px rgba(255, 255, 255, 1), -1px -1px 3px rgba(255, 255, 255, 1);
+}
+
+.project-row:hover .project-delete-btn {
+  opacity: 1;
 }
 
 .project-description-cell {
@@ -3938,6 +4234,76 @@ onMounted(async () => {
 .form-textarea:focus {
   outline: none;
   border-color: #667eea;
+}
+
+/* 날짜 입력 그룹 스타일 */
+.date-input-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.date-input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 삭제 확인 모달 스타일 */
+.delete-confirm-modal {
+  max-width: 400px;
+}
+
+.delete-warning {
+  text-align: center;
+}
+
+.project-to-delete {
+  background: #f7fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+  font-size: 1.1rem;
+}
+
+.warning-text {
+  color: #ef4444;
+  font-weight: 600;
+  margin: 0.5rem 0;
+}
+
+.error-text {
+  color: #ef4444;
+  font-weight: 600;
+  margin: 0.5rem 0;
+}
+
+.info-text {
+  color: #3b82f6;
+  font-weight: 500;
+  margin: 0.5rem 0;
+}
+
+.sub-warning {
+  color: #f59e0b;
+  font-weight: 500;
+  margin: 0.5rem 0;
+}
+
+.btn-danger {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-danger:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
 }
 
 /* 비활성화된 form 요소 */

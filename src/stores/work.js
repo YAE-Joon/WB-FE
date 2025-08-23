@@ -59,7 +59,7 @@ export const useWorkStore = defineStore('work', {
       this.loading = true
       this.error = null
       try {
-        const response = await axios.get('http://localhost:8000/api/v1/works')
+        const response = await axios.get('http://172.190.167.214:8000/api/v1/works')
         this.works = response.data
       } catch (err) {
         this.error = '작업 목록을 불러오는데 실패했습니다.'
@@ -71,7 +71,7 @@ export const useWorkStore = defineStore('work', {
 
     async fetchCategories() {
       try {
-        const response = await axios.get('http://localhost:8000/api/v1/categories')
+        const response = await axios.get('http://172.190.167.214:8000/api/v1/categories')
         this.categories = response.data
       } catch (err) {
         console.error('Categories fetch error:', err)
@@ -80,7 +80,7 @@ export const useWorkStore = defineStore('work', {
 
     async fetchStates() {
       try {
-        const response = await axios.get('http://localhost:8000/api/v1/states')
+        const response = await axios.get('http://172.190.167.214:8000/api/v1/states')
         this.states = response.data
       } catch (err) {
         console.error('States fetch error:', err)
@@ -91,7 +91,7 @@ export const useWorkStore = defineStore('work', {
       this.loading = true
       this.error = null
       try {
-        const response = await axios.post('http://localhost:8000/api/v1/works', workData)
+        const response = await axios.post('http://172.190.167.214:8000/api/v1/works', workData)
         this.works.push(response.data)
         return response.data
       } catch (err) {
@@ -107,7 +107,7 @@ export const useWorkStore = defineStore('work', {
       this.loading = true
       this.error = null
       try {
-        const response = await axios.put(`http://localhost:8000/api/v1/works/${workId}`, workData)
+        const response = await axios.put(`http://172.190.167.214:8000/api/v1/works/${workId}`, workData)
         const index = this.works.findIndex(w => w.id === workId)
         if (index !== -1) {
           this.works[index] = response.data
@@ -126,7 +126,7 @@ export const useWorkStore = defineStore('work', {
       this.loading = true
       this.error = null
       try {
-        await axios.delete(`http://localhost:8000/api/v1/works/${workId}`)
+        await axios.delete(`http://172.190.167.214:8000/api/v1/works/${workId}`)
         this.works = this.works.filter(w => w.id !== workId)
       } catch (err) {
         this.error = '작업 삭제에 실패했습니다.'
@@ -139,7 +139,7 @@ export const useWorkStore = defineStore('work', {
 
     async updateWorkState(workId, stateId) {
       try {
-        const response = await axios.post(`http://localhost:8000/api/v1/works/${workId}/state`, {
+        const response = await axios.post(`http://172.190.167.214:8000/api/v1/works/${workId}/state`, {
           state_id: stateId
         })
         

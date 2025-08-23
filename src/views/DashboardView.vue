@@ -1602,7 +1602,7 @@ const loadTopLevelProjects = async () => {
     
     // 새로운 categories API 호출
     console.log(`📡 연간 프로젝트 API 호출 - 연도: ${currentYear.value}`)
-    console.log(`🔗 API URL: http://127.0.0.1:8000/api/v1/category/categories?year=${currentYear.value}`)
+    console.log(`🔗 API URL: http://172.190.167.214:8000/api/v1/category/categories?year=${currentYear.value}`)
     
     const response = await axios.get(`${apiConfig.baseURL}${apiConfig.endpoints.categories}`, {
       params: {
@@ -2062,7 +2062,7 @@ const getWeekendWorks = async (startDate, endDate) => {
       end: endDate
     })
     
-    const response = await axios.get(`http://127.0.0.1:8000/api/v1/work/weekend?${params}`)
+    const response = await axios.get(`http://172.190.167.214:8000/api/v1/work/weekend?${params}`)
     return response.data
   } catch (error) {
     console.error('💥 주간 완료 업무 API 호출 에러:', error)
@@ -2160,7 +2160,7 @@ const closeModal = () => {
 // 오늘의 업무 데이터 새로고침 함수
 const refreshTodayData = async () => {
   try {
-    const response = await axios.get('http://127.0.0.1:8000/api/v1/work/today')
+    const response = await axios.get('http://172.190.167.214:8000/api/v1/work/today')
     const data = response.data
     
     // 데이터 매핑 및 화면 업데이트
@@ -2212,7 +2212,7 @@ const saveWork = async () => {
         // 완료 처리용 API 호출
         console.log(`📡 모달에서 업무 완료 API 호출 - 업무 ID: ${currentWork.value.id}`)
         
-        response = await axios.put(`http://127.0.0.1:8000/api/v1/work/end/${currentWork.value.id}`, null, {
+        response = await axios.put(`http://172.190.167.214:8000/api/v1/work/end/${currentWork.value.id}`, null, {
           headers: {
             'Content-Type': 'application/json'
           }
@@ -2233,7 +2233,7 @@ const saveWork = async () => {
         console.log('📋 업무 수정 전송 데이터:', updateData)
         console.log('📋 업무 수정 JSON 문자열:', JSON.stringify(updateData, null, 2))
         
-        response = await axios.put(`http://127.0.0.1:8000/api/v1/work/work/${currentWork.value.id}`, updateData, {
+        response = await axios.put(`http://172.190.167.214:8000/api/v1/work/work/${currentWork.value.id}`, updateData, {
           headers: {
             'Content-Type': 'application/json'
           }
@@ -2268,7 +2268,7 @@ const saveWork = async () => {
       
       console.log('📡 새 업무 데이터:', newWorkData)
       
-      const response = await axios.post('http://127.0.0.1:8000/api/v1/work', newWorkData, {
+      const response = await axios.post('http://172.190.167.214:8000/api/v1/work', newWorkData, {
         headers: {
           'Content-Type': 'application/json'
         }
@@ -2303,7 +2303,7 @@ const deleteWork = async (work) => {
     // API 호출 - PUT 방식으로 삭제
     console.log(`📡 업무 삭제 API 호출 - 업무 ID: ${work.id}`)
     
-    const response = await axios.put(`http://127.0.0.1:8000/api/v1/work/delete/${work.id}`, null, {
+    const response = await axios.put(`http://172.190.167.214:8000/api/v1/work/delete/${work.id}`, null, {
       headers: {
         'Content-Type': 'application/json'
       }
@@ -2514,8 +2514,8 @@ const buildCategoryHierarchyFromWorks = (works) => {
 // 카테고리 동적 로딩 함수
 const loadCategories = async (parentId = null, level = 0) => {
   const endpoint = level === 0 
-    ? 'http://127.0.0.1:8000/api/v1/category/level0'
-    : `http://127.0.0.1:8000/api/v1/category/level1/${parentId}`
+    ? 'http://172.190.167.214:8000/api/v1/category/level0'
+    : `http://172.190.167.214:8000/api/v1/category/level1/${parentId}`
   
   console.log(`📡 카테고리 로드 요청 - parentId: ${parentId}, level: ${level}, endpoint: ${endpoint}`)
   
@@ -2695,7 +2695,7 @@ const changeWorkStatus = async (work, newStatus, statusClass) => {
       // 완료 처리용 API 호출
       console.log(`📡 업무 완료 API 호출 - 업무 ID: ${work.id}`)
       
-      response = await axios.put(`http://127.0.0.1:8000/api/v1/work/end/${work.id}`, null, {
+      response = await axios.put(`http://172.190.167.214:8000/api/v1/work/end/${work.id}`, null, {
         headers: {
           'Content-Type': 'application/json'
         }
@@ -2727,7 +2727,7 @@ const changeWorkStatus = async (work, newStatus, statusClass) => {
       console.log('📋 전송 데이터:', updateData)
       console.log('📋 JSON 문자열:', JSON.stringify(updateData, null, 2))
       
-      response = await axios.put(`http://127.0.0.1:8000/api/v1/work/work/${work.id}`, updateData, {
+      response = await axios.put(`http://172.190.167.214:8000/api/v1/work/work/${work.id}`, updateData, {
         headers: {
           'Content-Type': 'application/json'
         }
@@ -2773,7 +2773,7 @@ onMounted(async () => {
   
   try {
     // 오늘의 업무 데이터 가져오기
-    const response = await axios.get('http://127.0.0.1:8000/api/v1/work/today')
+    const response = await axios.get('http://172.190.167.214:8000/api/v1/work/today')
     const data = response.data
     
     // 데이터 매핑 및 화면 업데이트
@@ -2805,7 +2805,7 @@ onMounted(async () => {
       hierarchicalCategories.value = loadedCategories
     
     // 주간 테이블용 최상위 카테고리 가져오기
-    const topCategoryResponse = await axios.get('http://127.0.0.1:8000/api/v1/category/level0')
+    const topCategoryResponse = await axios.get('http://172.190.167.214:8000/api/v1/category/level0')
     const topCategoryData = topCategoryResponse.data
     
     // 주간 테이블용 데이터 매핑

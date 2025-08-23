@@ -17,7 +17,7 @@ export const useAuthStore = defineStore('auth', {
         formData.append('username', username)
         formData.append('password', password)
         
-        const response = await axios.post('http://172.190.167.214:8000/api/v1/auth/login', formData, {
+        const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/auth/login`, formData, {
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded'
           }

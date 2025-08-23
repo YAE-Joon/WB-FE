@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# macOS metadata files
+._*
+.AppleDouble
+.LSOverride
+.Spotlight-V100
+.Trashes

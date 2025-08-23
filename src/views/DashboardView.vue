@@ -3,7 +3,10 @@
     <!-- 헤더 영역 -->
     <header class="dashboard-header">
       <div class="header-content">
-        <h1>손수레</h1>
+        <div class="title-container">
+          <h1>손수레</h1>
+          <div class="motto">When life gives you lemons, make lemonade! <span class="emoji-normal">🍋🍸</span></div>
+        </div>
         <div class="user-info">
           <span>안녕하세요! {{ auth.user?.id || 'User' }}님</span>
           <button @click="logout" class="logout-btn">로그아웃</button>
@@ -41,7 +44,7 @@
       <div v-show="activeTab === 'today'">
       <section class="today-work-section">
         <div class="section-header">
-          <h2>오늘의 업무</h2>
+          <h2>📋 오늘의 업무</h2>
           <button @click="addWork" class="add-btn">+ 업무 추가</button>
         </div>
         
@@ -417,7 +420,7 @@
       <!-- 주간 테이블 섹션 -->
       <section class="weekly-section">
         <div class="section-header">
-          <h2>주간 업무</h2>
+          <h2>🗓️ 주간 업무</h2>
           <div class="week-navigation">
             <button @click="prevWeek" class="nav-btn">‹</button>
             <span class="week-title">{{ currentWeekTitle }}</span>
@@ -446,7 +449,7 @@
             :key="category.id"
             class="weekly-row"
           >
-            <div class="category-cell" :style="{ backgroundColor: category.color }">
+            <div class="category-cell" :style="{ background: `linear-gradient(135deg, ${getCategoryPastelColor(category.id)}, ${getCategoryPastelColorLight(category.id)})` }">
               {{ category.name }}
             </div>
             <div 
@@ -462,10 +465,12 @@
                 :key="work.id"
                 class="completed-work-tag"
                 :title="`${work.title}${work.content ? ' - ' + work.content : ''}`"
-                :style="{ backgroundColor: getWorkTagColor(work) }"
                 @click.stop="viewCompletedWorkDetail(work)"
               >
-                <span class="work-tag-text">{{ truncateText(work.title, 15) }}</span>
+                <div class="work-tag-content">
+                  <span class="work-tag-indicator" :style="{ backgroundColor: getWorkTagColor(work) }"></span>
+                  <span class="work-tag-text">{{ truncateText(work.title, 15) }}</span>
+                </div>
                 <span class="work-tag-time">완료</span>
                 <button 
                   v-if="work.myjob"
@@ -1163,6 +1168,7 @@ import { useAuthStore } from '../stores/auth'
 import { useRouter } from 'vue-router'
 import TreeNode from '../components/TreeNode.vue'
 import draggable from 'vuedraggable'
+import { apiConfig } from '../config/api.js'
 import axios from 'axios'
 
 const auth = useAuthStore()
@@ -1534,7 +1540,7 @@ const saveProjectDetail = async () => {
     if (Object.keys(updateData).length > 0) {
       console.log('전송할 수정 데이터:', updateData)
       
-      const response = await axios.put(`http://127.0.0.1:8000/api/v1/category/category/${projectId}`, updateData, {
+      const response = await axios.put(`${apiConfig.baseURL}${apiConfig.endpoints.updateCategory(projectId)}`, updateData, {
         headers: {
           'Content-Type': 'application/json',
         }
@@ -1569,7 +1575,7 @@ const saveProject = async () => {
     console.log('전송할 프로젝트 데이터:', projectData)
     
     // API 호출 로직
-    const response = await axios.post('http://127.0.0.1:8000/api/v1/category/', projectData, {
+    const response = await axios.post(`${apiConfig.baseURL}${apiConfig.endpoints.createCategory}`, projectData, {
       headers: {
         'Content-Type': 'application/json',
       }
@@ -1598,7 +1604,7 @@ const loadTopLevelProjects = async () => {
     console.log(`📡 연간 프로젝트 API 호출 - 연도: ${currentYear.value}`)
     console.log(`🔗 API URL: http://127.0.0.1:8000/api/v1/category/categories?year=${currentYear.value}`)
     
-    const response = await axios.get('http://127.0.0.1:8000/api/v1/category/categories', {
+    const response = await axios.get(`${apiConfig.baseURL}${apiConfig.endpoints.categories}`, {
       params: {
         year: currentYear.value
       }
@@ -1790,6 +1796,40 @@ const getDeadlineStatus = (work) => {
   } else {
     return 'normal' // 일반
   }
+}
+
+// 카테고리별 파스텔 색상 생성 (새별 블로그 청량 파스텔 톤)
+const getCategoryPastelColor = (categoryId) => {
+  const pastelColors = [
+    '#A8E4A0', // 파스텔 민트 그린
+    '#A4C2F4', // 파스텔 라이트 블루
+    '#D1C4E9', // 파스텔 라벤더
+    '#F8BBD0', // 파스텔 핑크
+    '#B8E6AF', // 연한 민트
+    '#B4CCF5', // 연한 블루
+    '#DDD0ED', // 연한 라벤더
+    '#F5C6D6'  // 연한 핑크
+  ]
+  
+  const colorIndex = categoryId % pastelColors.length
+  return pastelColors[colorIndex]
+}
+
+// 더 연한 파스텔 색상 (그라데이션용)
+const getCategoryPastelColorLight = (categoryId) => {
+  const lightPastelColors = [
+    '#C8F4C0', // 더 연한 민트 그린
+    '#C4D2F4', // 더 연한 라이트 블루
+    '#E1D4F9', // 더 연한 라벤더
+    '#FCCBDD', // 더 연한 핑크
+    '#D8F6CF', // 더 더 연한 민트
+    '#D4DCF5', // 더 더 연한 블루
+    '#EDE0FD', // 더 더 연한 라벤더
+    '#F9D6E6'  // 더 더 연한 핑크
+  ]
+  
+  const colorIndex = categoryId % lightPastelColors.length
+  return lightPastelColors[colorIndex]
 }
 
 // ID 기반 일관된 색상 생성 함수
@@ -2811,7 +2851,7 @@ const deleteProject = async () => {
     const projectId = projectToDelete.value.id
     console.log(`🗑️ 프로젝트 삭제 요청 - ID: ${projectId}`)
     
-    const response = await axios.put(`http://127.0.0.1:8000/api/v1/category/delete/${projectId}`, {}, {
+    const response = await axios.put(`${apiConfig.baseURL}${apiConfig.endpoints.deleteCategory(projectId)}`, {}, {
       headers: {
         'Content-Type': 'application/json',
       }
@@ -4010,14 +4050,30 @@ const deleteProject = async () => {
   margin: 1px 0;
   border-radius: 10px;
   font-size: 0.7rem;
-  color: white;
+  color: #2d2d2d;
   cursor: pointer;
   transition: all 0.2s;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background-color: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.1);
   height: 22px; /* 더 작은 고정 높이 */
   width: 100%; /* 셀 너비에 맞춤 */
   overflow: hidden; /* 넘치는 내용 숨기기 */
   box-sizing: border-box; /* 패딩 포함하여 크기 계산 */
+}
+
+.work-tag-content {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.work-tag-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  flex-shrink: 0;
 }
 
 .completed-work-tag:hover {
@@ -4831,6 +4887,27 @@ const deleteProject = async () => {
     width: 100%;
     justify-content: flex-start;
   }
+}
+
+/* 제목 컨테이너 스타일 */
+.title-container {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.motto {
+  font-size: 1em;
+  color: #2c2c2c;
+  font-weight: 500;
+  font-style: italic;
+  font-family: 'Palatino', 'Book Antiqua', 'Georgia', serif;
+  transform: skew(-12deg);
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.emoji-normal {
+  font-style: normal;
 }
 
 /* 기존 반응형 스타일 */

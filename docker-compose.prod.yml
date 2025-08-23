@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  frontend:
+    build: .
+    ports:
+      - "80:80"
+    environment:
+      - NODE_ENV=production
+      - VITE_API_BASE_URL=/api/v1
+    restart: unless-stopped
+    networks:
+      - wb_network
+
+networks:
+  wb_network:
+    driver: bridge

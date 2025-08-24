@@ -454,7 +454,7 @@
             :key="category.id"
             class="weekly-row"
           >
-            <div class="category-cell" :style="{ borderLeft: `4px solid ${getCategoryPastelColor(category.id)}` }">
+            <div class="category-cell" :style="{ borderLeft: `8px solid ${getCategoryPastelColor(category.id)}` }">
               {{ category.name }}
             </div>
             <div 

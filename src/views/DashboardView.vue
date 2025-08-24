@@ -55,7 +55,12 @@
             <div class="header-cell">업무명</div>
             <div class="header-cell">상태</div>
             <div class="header-cell">시작일</div>
-            <div class="header-cell">마감일</div>
+            <div class="header-cell sortable" @click="toggleDeadlineSort">
+              마감일
+              <span v-if="deadlineSort !== 'none'" class="sort-indicator">
+                {{ deadlineSort === 'asc' ? '↑' : '↓' }}
+              </span>
+            </div>
             <div class="header-cell">내 업무</div>
           </div>
           
@@ -449,7 +454,7 @@
             :key="category.id"
             class="weekly-row"
           >
-            <div class="category-cell" :style="{ background: `linear-gradient(135deg, ${getCategoryPastelColor(category.id)}, ${getCategoryPastelColorLight(category.id)})` }">
+            <div class="category-cell" :style="{ borderLeft: `4px solid ${getCategoryPastelColor(category.id)}` }">
               {{ category.name }}
             </div>
             <div 
@@ -1184,6 +1189,9 @@ const currentWeek = ref(new Date())
 // 탭 메뉴 관리
 const activeTab = ref('today')
 
+// 마감일 정렬 상태 ('none', 'asc', 'desc')
+const deadlineSort = ref('none')
+
 // 프로젝트 페이지 관련
 const currentYear = ref(new Date().getFullYear())
 const topLevelProjects = ref([])
@@ -1248,9 +1256,10 @@ const categoryLoadingStates = ref(new Map()) // 로딩 상태 추적
 // 오늘의 업무 섹션용 카테고리 계층 (업무 데이터로부터 생성)
 const todayCategoryHierarchy = ref([])
 
-// 완료되지 않은 오늘의 업무만 필터링
+// 완료되지 않은 오늘의 업무만 필터링 + 마감일 정렬
 const activeTodayWorks = computed(() => {
-  return todayWorks.value.filter(work => work.status !== '완료')
+  const works = todayWorks.value.filter(work => work.status !== '완료')
+  return sortWorksByDeadline(works)
 })
 
 // 오늘의 업무 데이터 (실제 위치에 배치)
@@ -1800,6 +1809,17 @@ const truncateText = (text, maxLength) => {
   return text.substring(0, maxLength) + '...'
 }
 
+// 마감일 정렬 토글 함수
+const toggleDeadlineSort = () => {
+  if (deadlineSort.value === 'none') {
+    deadlineSort.value = 'asc' // 첫 클릭: 오름차순 (가까운 마감일 먼저)
+  } else if (deadlineSort.value === 'asc') {
+    deadlineSort.value = 'desc' // 두 번째 클릭: 내림차순 (먼 마감일 먼저)
+  } else {
+    deadlineSort.value = 'none' // 세 번째 클릭: 정렬 해제
+  }
+}
+
 // 마감일 상태 확인 함수
 const getDeadlineStatus = (work) => {
   if (!work.endDate) return 'normal'
@@ -1980,29 +2000,51 @@ const loadCategoryPath = async (categories) => {
   }
 }
 
+// 업무 정렬 함수
+const sortWorksByDeadline = (works) => {
+  if (deadlineSort.value === 'none') {
+    return works
+  }
+  
+  return [...works].sort((a, b) => {
+    // 마감일이 없는 경우 맨 뒤로
+    if (!a.endDate && !b.endDate) return 0
+    if (!a.endDate) return 1
+    if (!b.endDate) return -1
+    
+    const dateA = new Date(a.endDate)
+    const dateB = new Date(b.endDate)
+    
+    if (deadlineSort.value === 'asc') {
+      return dateA - dateB // 오름차순 (가까운 마감일 먼저)
+    } else {
+      return dateB - dateA // 내림차순 (먼 마감일 먼저)
+    }
+  })
+}
+
 // 새로운 카테고리 구조용 함수들
 const getWorksForCategory = (categoryId) => {
   const category = findCategoryInHierarchy(todayCategoryHierarchy.value, categoryId)
   if (!category || !category.works) return []
-  // 완료되지 않은 업무만 반환
-  return category.works.filter(work => work.status !== '완료')
+  // 완료되지 않은 업무만 반환하고 정렬 적용
+  const filteredWorks = category.works.filter(work => work.status !== '완료')
+  return sortWorksByDeadline(filteredWorks)
 }
 
 // 카테고리별 작업 목록을 위한 computed 속성들
 const categoryWorkLists = ref(new Map())
 
-// 드래그 앤 드롭용 카테고리 업무 가져오기
+// 드래그 앤 드롭용 카테고리 업무 가져오기 (정렬 적용)
 const getCategoryWorks = (categoryId) => {
-  if (!categoryWorkLists.value.has(categoryId)) {
-    const category = findCategoryInHierarchy(todayCategoryHierarchy.value, categoryId)
-    if (category && category.works) {
-      const filteredWorks = category.works.filter(work => work.status !== '완료')
-      categoryWorkLists.value.set(categoryId, ref(filteredWorks))
-    } else {
-      categoryWorkLists.value.set(categoryId, ref([]))
-    }
+  const category = findCategoryInHierarchy(todayCategoryHierarchy.value, categoryId)
+  if (!category || !category.works) {
+    return ref([])
   }
-  return categoryWorkLists.value.get(categoryId)
+  
+  const filteredWorks = category.works.filter(work => work.status !== '완료')
+  const sortedWorks = sortWorksByDeadline(filteredWorks)
+  return ref(sortedWorks)
 }
 
 // 업무 순서 변경 핸들러
@@ -2018,7 +2060,7 @@ const updateWorkOrder = (event) => {
   }
 }
 
-// 드롭다운 전에 최상위에서 보여줄 업무들 (하위 카테고리 업무 포함)
+// 드롭다운 전에 최상위에서 보여줄 업무들 (하위 카테고리 업무 포함, 정렬 적용)
 const getWorksForTopCategory = (categoryId) => {
   const category = findCategoryInHierarchy(todayCategoryHierarchy.value, categoryId)
   if (!category) return []
@@ -2034,8 +2076,9 @@ const getWorksForTopCategory = (categoryId) => {
   }
   
   const allWorks = getAllWorks(category)
-  // 완료되지 않은 업무만 반환
-  return allWorks.filter(work => work.status !== '완료')
+  // 완료되지 않은 업무만 반환하고 정렬 적용
+  const filteredWorks = allWorks.filter(work => work.status !== '완료')
+  return sortWorksByDeadline(filteredWorks)
 }
 
 const hasWorksInCategory = (category) => {
@@ -3564,6 +3607,21 @@ const deleteProject = async () => {
   border-right: none;
 }
 
+.header-cell.sortable {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.header-cell.sortable:hover {
+  background-color: rgba(255,255,255,0.1);
+}
+
+.sort-indicator {
+  margin-left: 0.5rem;
+  font-size: 0.8rem;
+  color: #fff;
+}
+
 /* 카테고리 행 스타일 */
 .category-row {
   display: grid;
@@ -4035,14 +4093,14 @@ const deleteProject = async () => {
 
 .category-cell {
   padding: 1rem;
-  color: white;
+  color: #333;
   font-weight: 600;
   text-align: center;
   border-right: 1px solid #e1e5e9;
   display: flex;
   align-items: center;
   justify-content: center;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  background: #f8f9fa;
 }
 
 .work-cell {

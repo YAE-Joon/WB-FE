@@ -19,7 +19,7 @@ services:
     environment:
       - DATABASE_URL=your-database-url
       - JWT_SECRET=your-jwt-secret
-    restart: unless-stopped
+    restart: unless-stopped   
 
 networks:
   default:

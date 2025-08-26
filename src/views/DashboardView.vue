@@ -1102,6 +1102,58 @@
                   완료된 업무의 상태는 변경할 수 없습니다.
                 </div>
               </div>
+
+              <div class="form-group">
+                <label>반복 업무</label>
+                <div class="recurring-work-section">
+                  <div class="checkbox-group">
+                    <input 
+                      type="checkbox" 
+                      v-model="currentWork.isRecurring" 
+                      id="recurring-checkbox"
+                      class="form-checkbox"
+                    >
+                    <label for="recurring-checkbox" class="checkbox-label">
+                      이 업무를 반복 업무로 설정
+                    </label>
+                  </div>
+                  
+                  <div v-if="currentWork.isRecurring" class="recurring-options">
+                    <div class="form-group">
+                      <label>반복 주기</label>
+                      <select v-model="currentWork.recurrenceType" class="form-select">
+                        <option v-for="(label, type) in RecurrenceTypeLabels" 
+                                :key="type" 
+                                :value="type">
+                          {{ label }}
+                        </option>
+                      </select>
+                    </div>
+                    
+                    <div class="form-group">
+                      <label>간격 값</label>
+                      <input 
+                        type="number" 
+                        v-model="currentWork.intervalValue" 
+                        class="form-input"
+                        min="1"
+                        placeholder="1"
+                      >
+                      <small class="form-help">예: 2일마다, 3주마다 등</small>
+                    </div>
+                    
+                    <div class="form-group">
+                      <label>반복 종료일 (선택사항)</label>
+                      <input 
+                        type="date" 
+                        v-model="currentWork.endAt" 
+                        class="form-input"
+                      >
+                      <small class="form-help">설정하지 않으면 무기한 반복</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
               
               <div class="form-group">
                 <label>시작일</label>
@@ -1175,6 +1227,7 @@ import TreeNode from '../components/TreeNode.vue'
 import draggable from 'vuedraggable'
 import { apiConfig } from '../config/api.js'
 import axios from 'axios'
+import { RecurrenceType, RecurrenceTypeLabels } from '../types/recurringWork.js'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -2174,7 +2227,11 @@ const addWork = () => {
     status: '예정',
     startDate: new Date().toISOString().split('T')[0],
     endDate: '',
-    isMyWork: false
+    isMyWork: false,
+    isRecurring: false,
+    recurrenceType: RecurrenceType.DAILY,
+    intervalValue: 1,
+    endAt: ''
   }
   isEditMode.value = false
   showWorkModal.value = true
@@ -2214,7 +2271,12 @@ const addWorkToCell = (categoryId, date) => {
 
 const closeModal = () => {
   showWorkModal.value = false
-  currentWork.value = {}
+  currentWork.value = {
+    isRecurring: false,
+    recurrenceType: RecurrenceType.DAILY,
+    intervalValue: 1,
+    endAt: ''
+  }
   isEditMode.value = false
   isDetailMode.value = false
   selectedProjectForWork.value = null
@@ -2326,28 +2388,57 @@ const saveWork = async () => {
         console.log('🔄 모달에서 주간 완료 업무 데이터 업데이트됨')
       }
     } else {
-      // 새 업무 추가 - POST 요청
-      const newWorkData = {
-        title: currentWork.value.name,
-        content: currentWork.value.content || null,
-        user_id: 1, // 임시 사용자 ID
-        category_id: categoryId,
-        current_status: currentWork.value.status,
-        started_at: currentWork.value.startDate ? new Date(currentWork.value.startDate + 'T00:00:00').toISOString() : null,
-        deadline: currentWork.value.endDate ? new Date(currentWork.value.endDate + 'T23:59:59').toISOString() : null,
-        myjob: currentWork.value.isMyWork
-      }
-      
-      console.log('📡 새 업무 데이터:', newWorkData)
-      
-      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/work`, newWorkData, {
-        headers: {
-          'Content-Type': 'application/json'
+      // 일반 업무 또는 반복 업무 생성 분기
+      if (currentWork.value.isRecurring) {
+        // 반복 업무 생성 - POST 요청
+        const recurringWorkData = {
+          title: currentWork.value.name,
+          content: currentWork.value.content || null,
+          user_id: 1, // 임시 사용자 ID  
+          category_id: categoryId,
+          current_status: currentWork.value.status,
+          started_at: currentWork.value.startDate ? new Date(currentWork.value.startDate + 'T00:00:00').toISOString() : null,
+          deadline: currentWork.value.endDate ? new Date(currentWork.value.endDate + 'T23:59:59').toISOString() : null,
+          end_at: currentWork.value.endAt ? new Date(currentWork.value.endAt + 'T23:59:59').toISOString() : null,
+          myjob: currentWork.value.isMyWork,
+          recurrence_type: currentWork.value.recurrenceType,
+          interval_value: currentWork.value.intervalValue
         }
-      })
-      
-      const createdWork = response.data
-      console.log('✅ 새 업무 생성 성공:', createdWork)
+        
+        console.log('📡 새 반복 업무 데이터:', recurringWorkData)
+        
+        const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/recurring-work`, recurringWorkData, {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        })
+        
+        const createdRecurringWork = response.data
+        console.log('✅ 새 반복 업무 생성 성공:', createdRecurringWork)
+      } else {
+        // 일반 업무 추가 - POST 요청
+        const newWorkData = {
+          title: currentWork.value.name,
+          content: currentWork.value.content || null,
+          user_id: 1, // 임시 사용자 ID
+          category_id: categoryId,
+          current_status: currentWork.value.status,
+          started_at: currentWork.value.startDate ? new Date(currentWork.value.startDate + 'T00:00:00').toISOString() : null,
+          deadline: currentWork.value.endDate ? new Date(currentWork.value.endDate + 'T23:59:59').toISOString() : null,
+          myjob: currentWork.value.isMyWork
+        }
+        
+        console.log('📡 새 업무 데이터:', newWorkData)
+        
+        const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/work`, newWorkData, {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        })
+        
+        const createdWork = response.data
+        console.log('✅ 새 업무 생성 성공:', createdWork)
+      }
       
       // 서버에서 최신 오늘의 업무 데이터를 다시 불러와서 동기화
       await refreshTodayData()
@@ -4468,6 +4559,24 @@ const deleteProject = async () => {
   border: 1px solid #ffeaa7;
   border-radius: 4px;
   font-size: 0.8rem;
+}
+
+/* 반복 업무 섹션 스타일 */
+.recurring-work-section {
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.recurring-options {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e9ecef;
+}
+
+.recurring-options .form-group {
+  margin-bottom: 0;
 }
 
 /* 드래그 앤 드롭 스타일 */

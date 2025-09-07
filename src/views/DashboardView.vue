@@ -5,7 +5,7 @@
       <div class="header-content">
         <div class="title-container">
           <h1>손수레</h1>
-          <div class="motto">When life gives you lemons, make lemonade! <span class="emoji-normal">🍋🍸</span></div>
+          <div class="motto">When life gives you lemons, make lemonade! <EmojiText text="🍋🍸" /></div>
         </div>
         <div class="user-info">
           <span>안녕하세요! {{ auth.user?.id || 'User' }}님</span>
@@ -19,21 +19,21 @@
           :class="{ active: activeTab === 'today' }"
           @click="setActiveTab('today')"
         >
-          오늘의 업무
+          In Process
         </button>
         <button 
           class="nav-item"
           :class="{ active: activeTab === 'project' }"
           @click="setActiveTab('project')"
         >
-          프로젝트
+          Project
         </button>
         <button 
           class="nav-item"
           :class="{ active: activeTab === 'third' }"
           @click="setActiveTab('third')"
         >
-          나의 업무일지
+          Work Log
         </button>
       </nav>
     </header>
@@ -44,7 +44,7 @@
       <div v-show="activeTab === 'today'">
       <section class="today-work-section">
         <div class="section-header">
-          <h2>📋 오늘의 업무</h2>
+          <h2>📋 In Process</h2>
           <button @click="addWork" class="add-btn">+ 업무 추가</button>
         </div>
         
@@ -128,9 +128,8 @@
                       <input 
                         type="checkbox" 
                         :checked="work.isMyWork" 
-                        class="my-work-checkbox readonly"
-                        readonly
-                        @click.prevent
+                        class="my-work-checkbox"
+                        @click="toggleMyWork(work)"
                       >
                       <button 
                         v-if="work.isMyWork"
@@ -425,7 +424,7 @@
       <!-- 주간 테이블 섹션 -->
       <section class="weekly-section">
         <div class="section-header">
-          <h2>🗓️ 주간 업무</h2>
+          <h2>🗓️ Completed</h2>
           <div class="week-navigation">
             <button @click="prevWeek" class="nav-btn">‹</button>
             <span class="week-title">{{ currentWeekTitle }}</span>
@@ -1121,25 +1120,24 @@
                   <div v-if="currentWork.isRecurring" class="recurring-options">
                     <div class="form-group">
                       <label>반복 주기</label>
-                      <select v-model="currentWork.recurrenceType" class="form-select">
-                        <option v-for="(label, type) in RecurrenceTypeLabels" 
-                                :key="type" 
-                                :value="type">
-                          {{ label }}
-                        </option>
-                      </select>
-                    </div>
-                    
-                    <div class="form-group">
-                      <label>간격 값</label>
-                      <input 
-                        type="number" 
-                        v-model="currentWork.intervalValue" 
-                        class="form-input"
-                        min="1"
-                        placeholder="1"
-                      >
-                      <small class="form-help">예: 2일마다, 3주마다 등</small>
+                      <div class="recurring-inline-form">
+                        <span class="recurring-prefix">매</span>
+                        <input 
+                          type="number" 
+                          v-model="currentWork.intervalValue" 
+                          class="form-input recurring-interval"
+                          min="1"
+                          placeholder="1"
+                        >
+                        <select v-model="currentWork.recurrenceType" class="form-select recurring-type">
+                          <option v-for="(label, type) in RecurrenceTypeLabels" 
+                                  :key="type" 
+                                  :value="type">
+                            {{ label }}
+                          </option>
+                        </select>
+                        <span class="recurring-suffix">마다 반복</span>
+                      </div>
                     </div>
                     
                     <div class="form-group">
@@ -1225,6 +1223,7 @@ import { useAuthStore } from '../stores/auth'
 import { useRouter } from 'vue-router'
 import TreeNode from '../components/TreeNode.vue'
 import draggable from 'vuedraggable'
+import EmojiText from '../components/common/EmojiText.vue'
 import { apiConfig } from '../config/api.js'
 import axios from 'axios'
 import { RecurrenceType, RecurrenceTypeLabels } from '../types/recurringWork.js'
@@ -2918,6 +2917,53 @@ const changeWorkStatus = async (work, newStatus, statusClass) => {
   }
 }
 
+const toggleMyWork = async (work) => {
+  try {
+    const newMyJobStatus = !work.isMyWork
+    
+    // 카테고리 ID 확인
+    let categoryId = work.categoryId
+    if (!categoryId && work.categories && work.categories.length > 0) {
+      const sortedCategories = work.categories.sort((a, b) => b.level - a.level)
+      categoryId = sortedCategories[0].category_id
+    }
+    
+    if (!categoryId) {
+      console.error('💥 카테고리 ID를 찾을 수 없습니다:', work)
+      alert('카테고리 정보를 찾을 수 없습니다.')
+      return
+    }
+    
+    const updateData = {
+      title: work.name,
+      content: work.content || null,
+      user_id: 1, // 임시 사용자 ID
+      category_id: categoryId,
+      current_status: work.status,
+      started_at: work.startDate ? new Date(work.startDate + 'T00:00:00').toISOString() : null,
+      deadline: work.endDate ? new Date(work.endDate + 'T23:59:59').toISOString() : null,
+      myjob: newMyJobStatus
+    }
+    
+    console.log('📋 내 업무 토글 전송 데이터:', updateData)
+    console.log('📋 categoryId 값:', categoryId, 'work.categoryId:', work.categoryId)
+    
+    const response = await axios.put(`${import.meta.env.VITE_API_BASE_URL}/work/work/${work.id}`, updateData, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    
+    if (response.status === 200) {
+      work.isMyWork = newMyJobStatus
+      console.log(`✅ 내 업무 상태 변경 성공: ${work.name} → ${newMyJobStatus ? '내 업무' : '다른 사람 업무'}`)
+    }
+  } catch (error) {
+    console.error('💥 내 업무 상태 변경 API 에러:', error)
+    alert('네트워크 오류가 발생했습니다.')
+  }
+}
+
 const logout = () => {
   auth.logout()
   router.push('/')
@@ -4576,7 +4622,30 @@ const deleteProject = async () => {
 }
 
 .recurring-options .form-group {
-  margin-bottom: 0;
+  margin-bottom: 1rem;
+}
+
+.recurring-inline-form {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.recurring-prefix,
+.recurring-suffix {
+  color: #333;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.recurring-interval {
+  width: 80px;
+  text-align: center;
+}
+
+.recurring-type {
+  width: 60px;
 }
 
 /* 드래그 앤 드롭 스타일 */
@@ -5102,9 +5171,6 @@ const deleteProject = async () => {
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-.emoji-normal {
-  font-style: normal;
-}
 
 /* 기존 반응형 스타일 */
 @media (max-width: 768px) {

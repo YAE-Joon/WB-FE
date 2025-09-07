@@ -7,9 +7,9 @@ export const RecurrenceType = {
 }
 
 export const RecurrenceTypeLabels = {
-  [RecurrenceType.DAILY]: '매일',
-  [RecurrenceType.WEEKLY]: '매주',
-  [RecurrenceType.MONTHLY]: '매월',
-  [RecurrenceType.YEARLY]: '매년',
+  [RecurrenceType.DAILY]: '일',
+  [RecurrenceType.WEEKLY]: '주',
+  [RecurrenceType.MONTHLY]: '월',
+  [RecurrenceType.YEARLY]: '년',
   [RecurrenceType.CUSTOM]: '사용자 정의'
 }

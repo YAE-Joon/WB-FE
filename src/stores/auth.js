@@ -24,13 +24,17 @@ export const useAuthStore = defineStore('auth', {
         })
         
         this.token = response.data.access_token || response.data.token
-        this.user = response.data.user
+        // Token 스키마에는 user 정보가 없으므로 로그인한 username 사용
+        this.user = { id: username }
         
         console.log('🔍 로그인 응답 전체:', response.data)
-        console.log('🔍 User 객체:', this.user)
+        console.log('🔍 설정된 User 객체:', this.user)
         
-        // 로컬 스토리지에 토큰 저장
+        // 로컬 스토리지에 토큰과 사용자명 저장
         localStorage.setItem('token', this.token)
+        if (this.user?.id) {
+          localStorage.setItem('username', this.user.id)
+        }
         
         // axios 헤더에 토큰 설정
         axios.defaults.headers.common['Authorization'] = `Bearer ${this.token}`
@@ -51,15 +55,20 @@ export const useAuthStore = defineStore('auth', {
       this.user = null
       this.error = null
       localStorage.removeItem('token')
+      localStorage.removeItem('username')
       delete axios.defaults.headers.common['Authorization']
     },
     
     // 앱 시작시 토큰 복원
     initializeAuth() {
       const token = localStorage.getItem('token')
+      const username = localStorage.getItem('username')
       if (token) {
         this.token = token
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+        if (username) {
+          this.user = { id: username }
+        }
       }
     }
   },

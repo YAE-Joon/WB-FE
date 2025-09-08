@@ -87,7 +87,8 @@
                 <template v-for="work in getWorksForTopCategory(category.id)" :key="work.id">
                   <div 
                     class="table-row work-row"
-                    :class="getDeadlineStatus(work)"
+                    :class="[getDeadlineStatus(work), { 'recurring-work': work.recurrence_type }]"
+                    :data-recurrence-text="work.recurrence_type ? getRecurrenceText(work.recurrence_type, work.interval_value) : ''"
                   >
                     <div class="table-cell work-category">
                       <span class="work-indent">　</span>
@@ -161,7 +162,8 @@
                     <template #item="{ element: work }">
                       <div 
                         class="table-row work-row draggable-item"
-                        :class="getDeadlineStatus(work)"
+                        :class="[getDeadlineStatus(work), { 'recurring-work': work.recurrence_type }]"
+                        :data-recurrence-text="work.recurrence_type ? getRecurrenceText(work.recurrence_type, work.interval_value) : ''"
                       >
                       <div class="table-cell work-category">
                         <span class="work-indent">　</span>
@@ -253,7 +255,8 @@
                         <template #item="{ element: work }">
                           <div 
                           class="table-row work-row draggable-item"
-                          :class="getDeadlineStatus(work)"
+                          :class="[getDeadlineStatus(work), { 'recurring-work': work.recurrence_type }]"
+                          :data-recurrence-text="work.recurrence_type ? getRecurrenceText(work.recurrence_type, work.interval_value) : ''"
                           >
                             <div class="table-cell work-category">
                             <span class="work-indent">　</span>
@@ -345,7 +348,8 @@
                             <template #item="{ element: work }">
                               <div 
                                 class="table-row work-row draggable-item"
-                                :class="getDeadlineStatus(work)"
+                                :class="[getDeadlineStatus(work), { 'recurring-work': work.recurrence_type }]"
+                                :data-recurrence-text="work.recurrence_type ? getRecurrenceText(work.recurrence_type, work.interval_value) : ''"
                               >
                                 <div class="table-cell work-category">
                                   <span class="work-indent">　</span>
@@ -2304,7 +2308,10 @@ const refreshTodayData = async () => {
       startDate: work.started_at ? work.started_at.split('T')[0] : '',
       endDate: work.deadline ? work.deadline.split('T')[0] : '',
       isMyWork: work.myjob,
-      categories: work.categories || []
+      categories: work.categories || [],
+      recurrence_type: work.recurrence_type,
+      interval_value: work.interval_value,
+      is_active: work.is_active
     }))
     
     todayWorks.value = mappedWorks
@@ -2567,6 +2574,21 @@ const formatDateKorean = (dateString) => {
   if (!dateString) return '미정'
   const date = new Date(dateString)
   return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`
+}
+
+// 반복 정보를 텍스트로 변환하는 함수
+const getRecurrenceText = (type, interval) => {
+  if (!type || !interval) return ''
+  
+  const typeMap = {
+    'daily': '일',
+    'weekly': '주',
+    'monthly': '월',
+    'yearly': '년'
+  }
+  
+  const typeText = typeMap[type] || type
+  return `${interval}${typeText}마다 반복`
 }
 
 // 프로젝트 계층 구조 파싱
@@ -2995,7 +3017,10 @@ onMounted(async () => {
         startDate: work.started_at ? work.started_at.split('T')[0] : '',
         endDate: work.deadline ? work.deadline.split('T')[0] : '',
         isMyWork: work.myjob,
-        categories: work.categories || [] // 새로 추가된 카테고리 정보
+        categories: work.categories || [], // 새로 추가된 카테고리 정보
+        recurrence_type: work.recurrence_type,
+        interval_value: work.interval_value,
+        is_active: work.is_active
       }))
       
       todayWorks.value = mappedWorks
@@ -3900,6 +3925,49 @@ const deleteProject = async () => {
 .table-row.due-today:hover {
   background: #feebc8 !important; /* 호버 시 더 진한 주황색 */
 }
+
+/* 반복업무 책갈피 스타일 */
+.table-row.recurring-work {
+  position: relative;
+}
+
+.table-row.recurring-work::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(135deg, #A6714F 0%, #C1856D 60%, #d4987f 100%); /* A6714F에서 시작, 자연스러운 그라데이션 */
+  border-radius: 0 4px 4px 0; /* 오른쪽만 둥근 모서리 */
+  transition: all 0.3s ease;
+}
+
+.table-row.recurring-work:hover::before {
+  width: 120px; /* 호버 시 확장 */
+  background: linear-gradient(90deg, #A6714F 0%, #C1856D 40%, #d4987f 80%, #e7b392 100%);
+  border-radius: 0 8px 8px 0; /* 호버 시 더 둥근 모서리 */
+}
+
+.table-row.recurring-work::after {
+  content: attr(data-recurrence-text);
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.table-row.recurring-work:hover::after {
+  opacity: 1;
+}
+
 
 .work-category {
   justify-content: flex-start;

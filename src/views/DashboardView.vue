@@ -87,7 +87,7 @@
                 <template v-for="work in getWorksForTopCategory(category.id)" :key="work.id">
                   <div 
                     class="table-row work-row"
-                    :class="[getDeadlineStatus(work), { 'recurring-work': work.recurrence_type }]"
+                    :class="[getDeadlineStatus(work), { 'recurring-work': work.recurrence_type }, getDeadlineBookmarkClass(work.endDate) && !work.recurrence_type ? 'deadline-bookmark' : '', getDeadlineBookmarkClass(work.endDate)]"
                     :data-recurrence-text="work.recurrence_type ? getRecurrenceText(work.recurrence_type, work.interval_value) : ''"
                     @click="work.recurrence_type ? openRecurringModal(work, $event) : null"
                   >
@@ -162,7 +162,7 @@
                     <template #item="{ element: work }">
                       <div 
                         class="table-row work-row draggable-item"
-                        :class="[getDeadlineStatus(work), { 'recurring-work': work.recurrence_type }]"
+                        :class="[getDeadlineStatus(work), { 'recurring-work': work.recurrence_type }, getDeadlineBookmarkClass(work.endDate) && !work.recurrence_type ? 'deadline-bookmark' : '', getDeadlineBookmarkClass(work.endDate)]"
                         :data-recurrence-text="work.recurrence_type ? getRecurrenceText(work.recurrence_type, work.interval_value) : ''"
                         @click="work.recurrence_type ? openRecurringModal(work, $event) : null"
                       >
@@ -255,7 +255,7 @@
                         <template #item="{ element: work }">
                           <div 
                           class="table-row work-row draggable-item"
-                          :class="[getDeadlineStatus(work), { 'recurring-work': work.recurrence_type }]"
+                          :class="[getDeadlineStatus(work), { 'recurring-work': work.recurrence_type }, getDeadlineBookmarkClass(work.endDate) && !work.recurrence_type ? 'deadline-bookmark' : '', getDeadlineBookmarkClass(work.endDate)]"
                           :data-recurrence-text="work.recurrence_type ? getRecurrenceText(work.recurrence_type, work.interval_value) : ''"
                           @click="work.recurrence_type ? openRecurringModal(work, $event) : null"
                           >
@@ -348,7 +348,7 @@
                             <template #item="{ element: work }">
                               <div 
                                 class="table-row work-row draggable-item"
-                                :class="[getDeadlineStatus(work), { 'recurring-work': work.recurrence_type }]"
+                                :class="[getDeadlineStatus(work), { 'recurring-work': work.recurrence_type }, getDeadlineBookmarkClass(work.endDate) && !work.recurrence_type ? 'deadline-bookmark' : '', getDeadlineBookmarkClass(work.endDate)]"
                                 :data-recurrence-text="work.recurrence_type ? getRecurrenceText(work.recurrence_type, work.interval_value) : ''"
                                 @click="work.recurrence_type ? openRecurringModal(work, $event) : null"
                               >
@@ -2142,6 +2142,31 @@ const toggleDeadlineSort = () => {
     deadlineSort.value = 'none' // 세 번째 클릭: 정렬 해제
   }
 }
+
+// 마감일 책갈피 클래스 반환 함수
+const getDeadlineBookmarkClass = (endDate) => {
+  if (!endDate) return ''
+  
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  
+  const endDateObj = new Date(endDate)
+  endDateObj.setHours(0, 0, 0, 0)
+  
+  const diffTime = endDateObj.getTime() - today.getTime()
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  
+  if (diffDays < 0) {
+    return 'overdue-bookmark' // 마감일 지남
+  } else if (diffDays === 0) {
+    return 'due-today-bookmark' // 마감일 당일
+  } else if (diffDays <= 3) {
+    return 'due-soon' // 마감일 임박 (3일 이내)
+  } else {
+    return '' // 여유 있음
+  }
+}
+
 
 // 마감일 상태 확인 함수
 const getDeadlineStatus = (work) => {
@@ -4446,6 +4471,130 @@ const deleteProject = async () => {
   opacity: 1;
 }
 
+/* 마감일 책갈피 스타일 */
+.table-row.deadline-bookmark {
+  position: relative;
+}
+
+/* 마감일 임박 - 주황색 책갈피 */
+.table-row.deadline-bookmark.due-soon::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(135deg, #d97706 0%, #f59e0b 60%, #fbbf24 100%);
+  border-radius: 0 4px 4px 0;
+  transition: all 0.3s ease;
+  z-index: 2;
+}
+
+.table-row.deadline-bookmark.due-soon:hover::before {
+  width: 120px;
+  background: linear-gradient(90deg, #d97706 0%, #f59e0b 40%, #fbbf24 80%, #fde047 100%);
+  border-radius: 0 8px 8px 0;
+}
+
+.table-row.deadline-bookmark.due-soon::after {
+  content: "마감일 임박";
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.table-row.deadline-bookmark.due-soon:hover::after {
+  opacity: 1;
+}
+
+/* 마감일 당일 - 빨간색 책갈피 */
+.table-row.deadline-bookmark.due-today-bookmark::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(135deg, #dc2626 0%, #ef4444 60%, #f87171 100%);
+  border-radius: 0 4px 4px 0;
+  transition: all 0.3s ease;
+  z-index: 2;
+}
+
+.table-row.deadline-bookmark.due-today-bookmark:hover::before {
+  width: 120px;
+  background: linear-gradient(90deg, #dc2626 0%, #ef4444 40%, #f87171 80%, #fca5a5 100%);
+  border-radius: 0 8px 8px 0;
+}
+
+.table-row.deadline-bookmark.due-today-bookmark::after {
+  content: "마감일";
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.table-row.deadline-bookmark.due-today-bookmark:hover::after {
+  opacity: 1;
+}
+
+/* 마감일 지남 - 진한 빨간색 책갈피 */
+.table-row.deadline-bookmark.overdue-bookmark::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(135deg, #991b1b 0%, #dc2626 60%, #ef4444 100%);
+  border-radius: 0 4px 4px 0;
+  transition: all 0.3s ease;
+  z-index: 2;
+}
+
+.table-row.deadline-bookmark.overdue-bookmark:hover::before {
+  width: 120px;
+  background: linear-gradient(90deg, #991b1b 0%, #dc2626 40%, #ef4444 80%, #f87171 100%);
+  border-radius: 0 8px 8px 0;
+}
+
+.table-row.deadline-bookmark.overdue-bookmark::after {
+  content: "지연됨";
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.table-row.deadline-bookmark.overdue-bookmark:hover::after {
+  opacity: 1;
+}
 
 .work-category {
   justify-content: flex-start;

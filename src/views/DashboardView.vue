@@ -89,12 +89,13 @@
                     class="table-row work-row"
                     :class="[getDeadlineStatus(work), { 'recurring-work': work.recurrence_type }]"
                     :data-recurrence-text="work.recurrence_type ? getRecurrenceText(work.recurrence_type, work.interval_value) : ''"
+                    @click="work.recurrence_type ? openRecurringModal(work, $event) : null"
                   >
                     <div class="table-cell work-category">
                       <span class="work-indent">　</span>
                       <span class="work-indicator">┗</span>
                     </div>
-                    <div class="table-cell work-name-cell" @click="editWork(work)">
+                    <div class="table-cell work-name-cell" @click.stop="editWork(work)">
                       {{ work.name }}
                     </div>
                     <div class="table-cell status-cell">
@@ -123,9 +124,9 @@
                         </div>
                       </div>
                     </div>
-                    <div class="table-cell">{{ formatDate(work.startDate) }}</div>
-                    <div class="table-cell">{{ formatDate(work.endDate) }}</div>
-                    <div class="table-cell my-work-cell">
+                    <div class="table-cell" @click.stop>{{ formatDate(work.startDate) }}</div>
+                    <div class="table-cell" @click.stop>{{ formatDate(work.endDate) }}</div>
+                    <div class="table-cell my-work-cell" @click.stop>
                       <input 
                         type="checkbox" 
                         :checked="work.isMyWork" 
@@ -133,7 +134,6 @@
                         @click="toggleMyWork(work)"
                       >
                       <button 
-                        v-if="work.isMyWork"
                         @click="deleteWork(work)"
                         class="delete-btn"
                         title="업무 삭제"
@@ -164,12 +164,13 @@
                         class="table-row work-row draggable-item"
                         :class="[getDeadlineStatus(work), { 'recurring-work': work.recurrence_type }]"
                         :data-recurrence-text="work.recurrence_type ? getRecurrenceText(work.recurrence_type, work.interval_value) : ''"
+                        @click="work.recurrence_type ? openRecurringModal(work, $event) : null"
                       >
                       <div class="table-cell work-category">
                         <span class="work-indent">　</span>
                         <span class="work-indicator">┗</span>
                       </div>
-                      <div class="table-cell work-name-cell no-drag" @click="editWork(work)">
+                      <div class="table-cell work-name-cell no-drag" @click.stop="editWork(work)">
                         {{ work.name }}
                       </div>
                       <div class="table-cell status-cell no-drag">
@@ -198,9 +199,9 @@
                                 </div>
                               </div>
                             </div>
-                      <div class="table-cell">{{ formatDate(work.startDate) }}</div>
-                      <div class="table-cell">{{ formatDate(work.endDate) }}</div>
-                      <div class="table-cell my-work-cell">
+                      <div class="table-cell" @click.stop>{{ formatDate(work.startDate) }}</div>
+                      <div class="table-cell" @click.stop>{{ formatDate(work.endDate) }}</div>
+                      <div class="table-cell my-work-cell" @click.stop>
                         <input 
                           type="checkbox" 
                           :checked="work.isMyWork" 
@@ -209,7 +210,6 @@
                           @click.prevent
                         >
                         <button 
-                          v-if="work.isMyWork"
                           @click="deleteWork(work)"
                           class="delete-btn"
                           title="업무 삭제"
@@ -257,12 +257,13 @@
                           class="table-row work-row draggable-item"
                           :class="[getDeadlineStatus(work), { 'recurring-work': work.recurrence_type }]"
                           :data-recurrence-text="work.recurrence_type ? getRecurrenceText(work.recurrence_type, work.interval_value) : ''"
+                          @click="work.recurrence_type ? openRecurringModal(work, $event) : null"
                           >
                             <div class="table-cell work-category">
                             <span class="work-indent">　</span>
                           <span class="work-indicator">┗</span>
                           </div>
-                          <div class="table-cell work-name-cell no-drag" @click="editWork(work)">
+                          <div class="table-cell work-name-cell no-drag" @click.stop="editWork(work)">
                             {{ work.name }}
                               </div>
                             <div class="table-cell status-cell no-drag">
@@ -291,9 +292,9 @@
                                 </div>
                               </div>
                             </div>
-                            <div class="table-cell">{{ formatDate(work.startDate) }}</div>
-                            <div class="table-cell">{{ formatDate(work.endDate) }}</div>
-                            <div class="table-cell my-work-cell">
+                            <div class="table-cell" @click.stop>{{ formatDate(work.startDate) }}</div>
+                            <div class="table-cell" @click.stop>{{ formatDate(work.endDate) }}</div>
+                            <div class="table-cell my-work-cell" @click.stop>
                               <input 
                                 type="checkbox" 
                                 :checked="work.isMyWork" 
@@ -302,7 +303,6 @@
                                 @click.prevent
                               >
                               <button 
-                                v-if="work.isMyWork"
                                 @click="deleteWork(work)"
                                 class="delete-btn"
                                 title="업무 삭제"
@@ -350,12 +350,13 @@
                                 class="table-row work-row draggable-item"
                                 :class="[getDeadlineStatus(work), { 'recurring-work': work.recurrence_type }]"
                                 :data-recurrence-text="work.recurrence_type ? getRecurrenceText(work.recurrence_type, work.interval_value) : ''"
+                                @click="work.recurrence_type ? openRecurringModal(work, $event) : null"
                               >
                                 <div class="table-cell work-category">
                                   <span class="work-indent">　</span>
                                   <span class="work-indicator">┗</span>
                                 </div>
-                                <div class="table-cell work-name-cell no-drag" @click="editWork(work)">
+                                <div class="table-cell work-name-cell no-drag" @click.stop="editWork(work)">
                                   {{ work.name }}
                                 </div>
                                 <div class="table-cell status-cell no-drag">
@@ -384,9 +385,9 @@
                                     </div>
                                   </div>
                                 </div>
-                                <div class="table-cell">{{ formatDate(work.startDate) }}</div>
-                                <div class="table-cell">{{ formatDate(work.endDate) }}</div>
-                                <div class="table-cell my-work-cell">
+                                <div class="table-cell" @click.stop>{{ formatDate(work.startDate) }}</div>
+                                <div class="table-cell" @click.stop>{{ formatDate(work.endDate) }}</div>
+                                <div class="table-cell my-work-cell" @click.stop>
                                   <input 
                                     type="checkbox" 
                                     :checked="work.isMyWork" 
@@ -395,7 +396,6 @@
                                     @click.prevent
                                   >
                                   <button 
-                                    v-if="work.isMyWork"
                                     @click="deleteWork(work)"
                                     class="delete-btn"
                                     title="업무 삭제"
@@ -481,7 +481,6 @@
                 </div>
                 <span class="work-tag-time">완료</span>
                 <button 
-                  v-if="work.myjob"
                   @click.stop="deleteWork(work)"
                   class="tag-delete-btn"
                   title="업무 삭제"
@@ -1010,6 +1009,17 @@
                 </span>
               </div>
             </div>
+            
+            <!-- 반복 정보 (반복업무인 경우에만 표시) -->
+            <div v-if="currentWork.recurrence_type" class="detail-item">
+              <div class="detail-label">반복 정보</div>
+              <div class="detail-value">
+                <span class="recurrence-badge">
+                  <span class="recurrence-icon">🔄</span>
+                  {{ getRecurrenceText(currentWork.recurrence_type, currentWork.interval_value) }}
+                </span>
+              </div>
+            </div>
           </div>
           
           <!-- 편집/추가 폼은 기존 코드 유지 -->
@@ -1218,6 +1228,119 @@
         </div>
       </div>
     </div>
+    
+    <!-- 반복업무 상세 모달 -->
+    <div v-if="showRecurringModal" class="modal-overlay" @click="closeRecurringModal">
+      <div class="modal-content recurring-modal" @click.stop>
+        <!-- 모달 헤더 -->
+        <div class="modal-header">
+          <div class="modal-header-content">
+            <h3 class="modal-title">
+              <div class="title-icon">🔄</div>
+              <span>반복업무 상세</span>
+            </h3>
+            <button @click="closeRecurringModal" class="close-btn">×</button>
+          </div>
+        </div>
+        
+        <!-- 모달 바디 -->
+        <div class="modal-body recurring-modal-body">
+          <div class="recurring-work-info">
+            <!-- 프로젝트 경로 -->
+            <div class="detail-item">
+              <div class="detail-label">프로젝트</div>
+              <div class="project-hierarchy">
+                <div class="hierarchy-breadcrumb">
+                  <span v-if="getRecurringProjectHierarchy().root" class="project-item project-root">
+                    <span class="project-icon">🏢</span>
+                    {{ getRecurringProjectHierarchy().root }}
+                  </span>
+                  <span v-if="getRecurringProjectHierarchy().sub" class="breadcrumb-separator">›</span>
+                  <span v-if="getRecurringProjectHierarchy().sub" class="project-item project-sub">
+                    <span class="project-icon">🎨</span>
+                    {{ getRecurringProjectHierarchy().sub }}
+                  </span>
+                  <span v-if="getRecurringProjectHierarchy().leaf" class="breadcrumb-separator">›</span>
+                  <span v-if="getRecurringProjectHierarchy().leaf" class="project-item project-leaf">
+                    <span class="project-icon">📱</span>
+                    {{ getRecurringProjectHierarchy().leaf }}
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 업무명 -->
+            <div class="detail-item">
+              <div class="detail-label">업무명</div>
+              <div class="work-title">{{ currentRecurringWork.title || currentRecurringWork.name }}</div>
+            </div>
+            
+            <!-- 업무 내용 -->
+            <div class="detail-item">
+              <div class="detail-label">업무 내용</div>
+              <div class="content-box">
+                <div class="content-text">{{ currentRecurringWork.content || '내용이 없습니다.' }}</div>
+              </div>
+            </div>
+            
+            <!-- 다음 업무 생성일 -->
+            <div class="detail-item">
+              <div class="detail-label">다음 업무 생성일</div>
+              <div class="detail-value">
+                <span class="next-execution-date">
+                  📅 {{ currentRecurringWork.next_execution_date ? formatDateKorean(currentRecurringWork.next_execution_date.split('T')[0]) : '계산 중' }}
+                </span>
+              </div>
+            </div>
+            
+            <!-- 일정 -->
+            <div class="detail-item">
+              <div class="detail-label">일정</div>
+              <div class="date-container">
+                <div class="date-item">
+                  <div class="detail-label">시작일</div>
+                  <div class="date-value">{{ currentRecurringWork.started_at ? formatDateKorean(currentRecurringWork.started_at.split('T')[0]) : '미정' }}</div>
+                </div>
+                <div class="date-item">
+                  <div class="detail-label">마감일</div>
+                  <div class="date-value">{{ currentRecurringWork.deadline ? formatDateKorean(currentRecurringWork.deadline.split('T')[0]) : '미정' }}</div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 담당자 -->
+            <div class="detail-item">
+              <div class="detail-label">담당</div>
+              <div class="detail-value">
+                <span class="my-work-indicator" :class="currentRecurringWork.myjob ? 'my-work-yes' : 'my-work-no'">
+                  <span class="indicator-dot"></span>
+                  {{ currentRecurringWork.myjob ? '내 업무' : '다른 사람 업무' }}
+                </span>
+              </div>
+            </div>
+            
+            <!-- 반복 설정 -->
+            <div class="detail-item">
+              <div class="detail-label">반복 설정</div>
+              <div class="detail-value">
+                <span class="recurrence-badge large">
+                  <span class="recurrence-icon">🔄</span>
+                  {{ getRecurrenceText(currentRecurringWork.recurrence_type, currentRecurringWork.interval_value) }}
+                </span>
+              </div>
+            </div>
+            
+            <!-- 반복업무 생성 종료일 -->
+            <div v-if="currentRecurringWork.end_at" class="detail-item">
+              <div class="detail-label">반복업무 생성 종료일</div>
+              <div class="detail-value">
+                <div class="date-value">{{ formatDateKorean(currentRecurringWork.end_at.split('T')[0]) }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -1237,9 +1360,11 @@ const router = useRouter()
 
 // 상태 관리
 const showWorkModal = ref(false)
+const showRecurringModal = ref(false)
 const isEditMode = ref(false)
 const isDetailMode = ref(false)
 const currentWork = ref({})
+const currentRecurringWork = ref({})
 const currentWeek = ref(new Date())
 
 // 탭 메뉴 관리
@@ -2283,6 +2408,38 @@ const closeModal = () => {
   isEditMode.value = false
   isDetailMode.value = false
   selectedProjectForWork.value = null
+}
+
+const openRecurringModal = async (work, event) => {
+  // 왼쪽 책갈피 영역 클릭 체크 (왼쪽 120px 영역)
+  if (event && event.offsetX > 120) {
+    return
+  }
+  
+  // recurring_work_id가 없으면 기본 정보만 표시
+  if (!work.recurring_work_id) {
+    return
+  }
+  
+  try {
+    // 반복업무 상세 정보 API 호출 (recurring_work_id 사용)
+    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/recurring-work/${work.recurring_work_id}`)
+    
+    if (response.status === 200) {
+      currentRecurringWork.value = response.data
+      showRecurringModal.value = true
+    }
+  } catch (error) {
+    console.error('💥 반복업무 상세 조회 에러:', error)
+    // 에러 시 기본 정보라도 표시
+    currentRecurringWork.value = { ...work }
+    showRecurringModal.value = true
+  }
+}
+
+const closeRecurringModal = () => {
+  showRecurringModal.value = false
+  currentRecurringWork.value = {}
   projectSearchTerm.value = ''
 }
 
@@ -2292,11 +2449,9 @@ const refreshTodayData = async () => {
   try {
     const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/work/today`)
     const data = response.data
-    console.log('📥 받은 데이터:', data)
     
     // 데이터가 배열인지 확인
     const worksArray = Array.isArray(data) ? data : (data.works || data.data || [])
-    console.log('📋 처리할 작업 배열:', worksArray)
     
     // 데이터 매핑 및 화면 업데이트
     const mappedWorks = worksArray.map(work => ({
@@ -2311,21 +2466,19 @@ const refreshTodayData = async () => {
       categories: work.categories || [],
       recurrence_type: work.recurrence_type,
       interval_value: work.interval_value,
-      is_active: work.is_active
+      is_active: work.is_active,
+      recurring_work_id: work.recurrence_id
     }))
     
     todayWorks.value = mappedWorks
-    console.log('✅ todayWorks 업데이트 완료:', todayWorks.value)
     
     // 업무들로부터 카테고리 계층구조 생성
     const categoryHierarchy = buildCategoryHierarchyFromWorks(mappedWorks)
     todayCategoryHierarchy.value = categoryHierarchy
-    console.log('✅ 카테고리 계층구조 업데이트 완료')
     
     // 카테고리별 작업 목록 초기화
     categoryWorkLists.value.clear()
     
-    console.log('✅ 오늘의 업무 데이터 새로고침 완료')
   } catch (error) {
     console.error('💥 오늘의 업무 데이터 새로고침 에러:', error)
   }
@@ -2421,7 +2574,35 @@ const saveWork = async () => {
         
         const createdRecurringWork = response.data
         console.log('✅ 새 반복 업무 생성 성공:', createdRecurringWork)
-      } else {
+        console.log('📋 생성된 반복업무 ID:', createdRecurringWork.id)
+        console.log('📋 반복업무 생성 API 전체 응답:', JSON.stringify(createdRecurringWork, null, 2))
+        
+        // 생성된 반복업무를 현재 업무 목록에 임시로 추가
+        const newRecurringWorkItem = {
+          id: `temp-${Date.now()}`, // 임시 work ID
+          name: createdRecurringWork.title,
+          content: createdRecurringWork.content,
+          categoryId: createdRecurringWork.category_id,
+          status: '예정',
+          startDate: createdRecurringWork.started_at ? createdRecurringWork.started_at.split('T')[0] : '',
+          endDate: createdRecurringWork.deadline ? createdRecurringWork.deadline.split('T')[0] : '',
+          isMyWork: createdRecurringWork.myjob,
+          categories: [],
+          recurrence_type: createdRecurringWork.recurrence_type,
+          interval_value: createdRecurringWork.interval_value,
+          is_active: createdRecurringWork.is_active,
+          recurring_work_id: createdRecurringWork.id // 생성된 반복업무의 ID를 recurring_work_id로 설정
+        }
+        
+        // 기존 목록에 추가 (새로고침은 하지 않음)
+        todayWorks.value.push(newRecurringWorkItem)
+        console.log('📋 생성된 반복업무를 목록에 추가:', newRecurringWorkItem)
+        console.log('💡 새로고침 없이 임시 아이템 유지 - 책갈피 클릭 가능')
+        
+        // 카테고리 계층구조 업데이트만 수행
+        const categoryHierarchy = buildCategoryHierarchyFromWorks(todayWorks.value)
+        todayCategoryHierarchy.value = categoryHierarchy
+          } else {
         // 일반 업무 추가 - POST 요청
         const newWorkData = {
           title: currentWork.value.name,
@@ -2460,33 +2641,52 @@ const saveWork = async () => {
 }
 
 const deleteWork = async (work) => {
-  // 삭제 확인 경고창 (work.name 또는 work.title 둘 다 지원)
+  // 1. 업무 삭제 확인
   const workName = work.name || work.title || '이 업무'
-  const confirmed = confirm(`"${workName}" 업무를 정말 삭제하시겠습니까?\n\n삭제된 업무는 복구할 수 없습니다.`)
+  const workDeleteConfirmed = confirm(`"${workName}" 업무를 정말 삭제하시겠습니까?\n\n삭제된 업무는 복구할 수 없습니다.`)
   
-  if (!confirmed) {
-    return // 사용자가 취소한 경우
+  // 2. 반복업무인 경우 반복업무 삭제 확인 (업무 삭제 취소와 관계없이)
+  let recurringDeleteConfirmed = false
+  if (work.recurrence_type && work.recurring_work_id) {
+    recurringDeleteConfirmed = confirm(`반복업무 생성도 삭제하시겠습니까?\n\n- "확인": 반복업무 생성 삭제\n- "취소": 반복업무 생성 유지`)
+  }
+  
+  // 둘 다 취소한 경우 함수 종료
+  if (!workDeleteConfirmed && !recurringDeleteConfirmed) {
+    return
   }
   
   try {
-    // API 호출 - PUT 방식으로 삭제
-    console.log(`📡 업무 삭제 API 호출 - 업무 ID: ${work.id}`)
+    // 업무 삭제 API 호출 (확인한 경우만)
+    if (workDeleteConfirmed) {
+      await axios.put(`${import.meta.env.VITE_API_BASE_URL}/work/delete/${work.id}`, null, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+    }
     
-    const response = await axios.put(`${import.meta.env.VITE_API_BASE_URL}/work/delete/${work.id}`, null, {
-      headers: {
-        'Content-Type': 'application/json'
+    // 반복업무 삭제 API 호출 (확인한 경우만)
+    if (recurringDeleteConfirmed && work.recurring_work_id) {
+      await axios.put(`${import.meta.env.VITE_API_BASE_URL}/recurring-work/delete/${work.recurring_work_id}`, null, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      // 반복업무가 삭제되었으므로 해당 업무의 반복업무 속성 제거
+      const workToUpdate = todayWorks.value.find(w => w.id === work.id)
+      if (workToUpdate) {
+        workToUpdate.recurrence_type = null
+        workToUpdate.interval_value = null
+        workToUpdate.is_active = false
+        workToUpdate.recurring_work_id = null
       }
-    })
+    }
     
-    console.log('✅ 업무 삭제 성공')
-    
-    // 오늘의 업무 데이터 새로고침
+    // 데이터 새로고침
     await refreshTodayData()
-    console.log('🔄 업무 삭제 후 오늘의 업무 데이터 새로고침 완료')
-    
-    // 주간업무 데이터도 새로고침 (완료된 업무가 삭제될 수 있으므로)
     await updateWeeklyData()
-    console.log('🔄 업무 삭제 후 주간업무 데이터 새로고침 완료')
     
   } catch (error) {
     console.error('💥 업무 삭제 API 에러:', error)
@@ -2625,6 +2825,42 @@ const getProjectHierarchy = () => {
   }
   
   return findHierarchy(hierarchicalCategories.value, currentWork.value.categoryId)
+}
+
+// 반복업무 프로젝트 계층구조 가져오기
+const getRecurringProjectHierarchy = () => {
+  // categories 배열이 있는 경우
+  if (currentRecurringWork.value.categories && currentRecurringWork.value.categories.length > 0) {
+    const sortedCategories = currentRecurringWork.value.categories.sort((a, b) => a.level - b.level)
+    return {
+      root: sortedCategories[0]?.category_name || '',
+      sub: sortedCategories[1]?.category_name || '',
+      leaf: sortedCategories[2]?.category_name || ''
+    }
+  }
+  
+  // category_id가 있는 경우 hierarchicalCategories에서 찾기
+  if (!currentRecurringWork.value.category_id) return { root: '', sub: '', leaf: '' }
+  
+  const findHierarchy = (categories, targetId, path = []) => {
+    for (const category of categories) {
+      const newPath = [...path, category.name]
+      if (category.id === targetId) {
+        return {
+          root: newPath[0] || '',
+          sub: newPath[1] || '',
+          leaf: newPath[2] || ''
+        }
+      }
+      if (category.children) {
+        const found = findHierarchy(category.children, targetId, newPath)
+        if (found) return found
+      }
+    }
+    return { root: '', sub: '', leaf: '' }
+  }
+  
+  return findHierarchy(hierarchicalCategories.value, currentRecurringWork.value.category_id)
 }
 
 // 업무 데이터로부터 카테고리 계층구조 생성
@@ -3020,7 +3256,8 @@ onMounted(async () => {
         categories: work.categories || [], // 새로 추가된 카테고리 정보
         recurrence_type: work.recurrence_type,
         interval_value: work.interval_value,
-        is_active: work.is_active
+        is_active: work.is_active,
+        recurring_work_id: work.recurrence_id // recurrence_id를 recurring_work_id로 매핑
       }))
       
       todayWorks.value = mappedWorks
@@ -5017,6 +5254,75 @@ const deleteProject = async () => {
   background: #f3f4f6;
   color: #6b7280;
   border: 1px solid #d1d5db;
+}
+
+/* 반복업무 배지 스타일 */
+.recurrence-badge {
+  display: inline-flex;
+  align-items: center;
+  background: linear-gradient(135deg, #A6714F 0%, #C1856D 60%, #d4987f 100%);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.recurrence-icon {
+  margin-right: 6px;
+}
+
+/* 반복업무 모달 스타일 */
+.recurring-modal {
+  max-width: 700px;
+  width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.recurring-modal-body {
+  padding: 24px;
+}
+
+.recurring-work-info {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.recurrence-badge.large {
+  padding: 8px 16px;
+  font-size: 1rem;
+}
+
+.status-badge.active {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.status-badge.inactive {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.work-content {
+  background: #f8f9fa;
+  padding: 12px;
+  border-radius: 8px;
+  border-left: 4px solid #A6714F;
+  line-height: 1.6;
+  color: #374151;
+}
+
+.next-execution-date {
+  background: #dbeafe;
+  color: #1e40af;
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-weight: 500;
 }
 
 .indicator-dot {

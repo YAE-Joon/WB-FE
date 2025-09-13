@@ -1119,49 +1119,67 @@
               <div class="form-group">
                 <label>반복 업무</label>
                 <div class="recurring-work-section">
-                  <div class="checkbox-group">
-                    <input 
-                      type="checkbox" 
-                      v-model="currentWork.isRecurring" 
-                      id="recurring-checkbox"
-                      class="form-checkbox"
-                    >
-                    <label for="recurring-checkbox" class="checkbox-label">
-                      이 업무를 반복 업무로 설정
-                    </label>
-                  </div>
-                  
-                  <div v-if="currentWork.isRecurring" class="recurring-options">
-                    <div class="form-group">
-                      <label>반복 주기</label>
-                      <div class="recurring-inline-form">
-                        <span class="recurring-prefix">매</span>
-                        <input 
-                          type="number" 
-                          v-model="currentWork.intervalValue" 
-                          class="form-input recurring-interval"
-                          min="1"
-                          placeholder="1"
-                        >
-                        <select v-model="currentWork.recurrenceType" class="form-select recurring-type">
-                          <option v-for="(label, type) in RecurrenceTypeLabels" 
-                                  :key="type" 
-                                  :value="type">
-                            {{ label }}
-                          </option>
-                        </select>
-                        <span class="recurring-suffix">마다 반복</span>
+                  <!-- 이미 반복업무인 경우 안내 메시지 -->
+                  <div v-if="isEditMode && currentWork.recurrence_type" class="recurring-existing-notice">
+                    <div class="notice-content">
+                      <span class="notice-icon">🔄</span>
+                      <div class="notice-text">
+                        <div class="notice-title">이 업무는 이미 반복업무입니다</div>
+                        <div class="notice-description">
+                          반복업무 설정을 변경하려면 
+                          <button type="button" @click="openRecurringModalFromEdit" class="link-button">반복업무 상세</button>
+                          에서 수정해주세요
+                        </div>
                       </div>
                     </div>
-                    
-                    <div class="form-group">
-                      <label>반복 종료일 (선택사항)</label>
+                  </div>
+                  
+                  <!-- 반복업무가 아닌 경우에만 설정 옵션 표시 -->
+                  <div v-else>
+                    <div class="checkbox-group">
                       <input 
-                        type="date" 
-                        v-model="currentWork.endAt" 
-                        class="form-input"
+                        type="checkbox" 
+                        v-model="currentWork.isRecurring" 
+                        id="recurring-checkbox"
+                        class="form-checkbox"
                       >
-                      <small class="form-help">설정하지 않으면 무기한 반복</small>
+                      <label for="recurring-checkbox" class="checkbox-label">
+                        이 업무를 반복 업무로 설정
+                      </label>
+                    </div>
+                    
+                    <div v-if="currentWork.isRecurring" class="recurring-options">
+                      <div class="form-group">
+                        <label>반복 주기</label>
+                        <div class="recurring-inline-form">
+                          <span class="recurring-prefix">매</span>
+                          <input 
+                            type="number" 
+                            v-model="currentWork.intervalValue" 
+                            class="form-input recurring-interval"
+                            min="1"
+                            placeholder="1"
+                          >
+                          <select v-model="currentWork.recurrenceType" class="form-select recurring-type">
+                            <option v-for="(label, type) in RecurrenceTypeLabels" 
+                                    :key="type" 
+                                    :value="type">
+                              {{ label }}
+                            </option>
+                          </select>
+                          <span class="recurring-suffix">마다 반복</span>
+                        </div>
+                      </div>
+                      
+                      <div class="form-group">
+                        <label>반복 종료일 (선택사항)</label>
+                        <input 
+                          type="date" 
+                          v-model="currentWork.endAt" 
+                          class="form-input"
+                        >
+                        <small class="form-help">설정하지 않으면 무기한 반복</small>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1237,7 +1255,7 @@
           <div class="modal-header-content">
             <h3 class="modal-title">
               <div class="title-icon">🔄</div>
-              <span>반복업무 상세</span>
+              <span>{{ isRecurringEditMode ? '반복업무 편집' : '반복업무 상세' }}</span>
             </h3>
             <button @click="closeRecurringModal" class="close-btn">×</button>
           </div>
@@ -1245,7 +1263,8 @@
         
         <!-- 모달 바디 -->
         <div class="modal-body recurring-modal-body">
-          <div class="recurring-work-info">
+          <!-- 상세 모드 -->
+          <div v-if="!isRecurringEditMode" class="recurring-work-info">
             <!-- 프로젝트 경로 -->
             <div class="detail-item">
               <div class="detail-label">프로젝트</div>
@@ -1338,6 +1357,127 @@
               </div>
             </div>
           </div>
+          
+          <!-- 편집 모드 -->
+          <div v-else class="recurring-work-edit-form">
+            <!-- 업무명 -->
+            <div class="form-group">
+              <label>업무명</label>
+              <input 
+                type="text" 
+                v-model="editingRecurringWork.title" 
+                class="form-input"
+                placeholder="업무명을 입력하세요"
+              >
+            </div>
+            
+            <!-- 업무 내용 -->
+            <div class="form-group">
+              <label>업무 내용</label>
+              <textarea 
+                v-model="editingRecurringWork.content" 
+                class="form-textarea"
+                placeholder="업무 내용을 입력하세요"
+                rows="3"
+              ></textarea>
+            </div>
+            
+            <!-- 담당자 -->
+            <div class="form-group">
+              <label>담당자</label>
+              <div class="checkbox-group">
+                <input 
+                  type="checkbox" 
+                  v-model="editingRecurringWork.myjob" 
+                  id="recurring-myjob-checkbox"
+                  class="form-checkbox"
+                >
+                <label for="recurring-myjob-checkbox" class="checkbox-label">
+                  내 업무로 설정
+                </label>
+              </div>
+            </div>
+            
+            <!-- 반복 설정 -->
+            <div class="form-group">
+              <label>반복 설정</label>
+              <div class="recurring-inline-form">
+                <span class="recurring-prefix">매</span>
+                <input 
+                  type="number" 
+                  v-model="editingRecurringWork.interval_value" 
+                  class="form-input recurring-interval"
+                  min="1"
+                  placeholder="1"
+                >
+                <select v-model="editingRecurringWork.recurrence_type" class="form-select recurring-type">
+                  <option v-for="(label, type) in RecurrenceTypeLabels" 
+                          :key="type" 
+                          :value="type">
+                    {{ label }}
+                  </option>
+                </select>
+                <span class="recurring-suffix">마다 반복</span>
+              </div>
+            </div>
+            
+            <!-- 시작일 -->
+            <div class="form-group">
+              <label>시작일</label>
+              <input 
+                type="date" 
+                v-model="editingRecurringWork.started_at" 
+                class="form-input"
+              >
+            </div>
+            
+            <!-- 마감일 -->
+            <div class="form-group">
+              <label>마감일 (선택사항)</label>
+              <input 
+                type="date" 
+                v-model="editingRecurringWork.deadline" 
+                class="form-input"
+              >
+            </div>
+            
+            <!-- 반복 종료일 -->
+            <div class="form-group">
+              <label>반복 종료일 (선택사항)</label>
+              <input 
+                type="date" 
+                v-model="editingRecurringWork.end_at" 
+                class="form-input"
+              >
+              <small class="form-help">설정하지 않으면 무기한 반복</small>
+            </div>
+            
+            <!-- 활성 상태 -->
+            <div class="form-group">
+              <label>활성 상태</label>
+              <div class="checkbox-group">
+                <input 
+                  type="checkbox" 
+                  v-model="editingRecurringWork.is_active" 
+                  id="recurring-active-checkbox"
+                  class="form-checkbox"
+                >
+                <label for="recurring-active-checkbox" class="checkbox-label">
+                  반복업무 활성화
+                </label>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 모달 푸터 -->
+          <div class="modal-footer">
+            <div></div>
+            <div class="button-group">
+              <button @click="closeRecurringModal" class="btn btn-secondary">닫기</button>
+              <button v-if="!isRecurringEditMode" @click="editRecurringWork" class="btn btn-primary">편집</button>
+              <button v-else @click="saveRecurringWork" class="btn btn-primary">저장</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1363,8 +1503,10 @@ const showWorkModal = ref(false)
 const showRecurringModal = ref(false)
 const isEditMode = ref(false)
 const isDetailMode = ref(false)
+const isRecurringEditMode = ref(false) // 반복업무 편집 모드
 const currentWork = ref({})
 const currentRecurringWork = ref({})
+const editingRecurringWork = ref({}) // 편집 중인 반복업무 데이터
 const currentWeek = ref(new Date())
 
 // 탭 메뉴 관리
@@ -2439,8 +2581,86 @@ const openRecurringModal = async (work, event) => {
 
 const closeRecurringModal = () => {
   showRecurringModal.value = false
+  isRecurringEditMode.value = false
   currentRecurringWork.value = {}
+  editingRecurringWork.value = {}
   projectSearchTerm.value = ''
+}
+
+// 편집 모드에서 반복업무 상세 모달 열기
+const openRecurringModalFromEdit = async () => {
+  if (!currentWork.value.recurring_work_id) {
+    alert('반복업무 정보를 찾을 수 없습니다.')
+    return
+  }
+  
+  try {
+    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/recurring-work/${currentWork.value.recurring_work_id}`)
+    currentRecurringWork.value = response.data
+    showRecurringModal.value = true
+  } catch (error) {
+    console.error('반복업무 상세 조회 에러:', error)
+    alert('반복업무 정보를 불러오는 중 오류가 발생했습니다.')
+  }
+}
+
+// 반복업무 편집 모드로 전환
+const editRecurringWork = () => {
+  isRecurringEditMode.value = true
+  
+  // 편집용 데이터 복사 (날짜 포맷 변환)
+  editingRecurringWork.value = {
+    title: currentRecurringWork.value.title,
+    content: currentRecurringWork.value.content,
+    category_id: currentRecurringWork.value.category_id,
+    myjob: currentRecurringWork.value.myjob,
+    recurrence_type: currentRecurringWork.value.recurrence_type,
+    interval_value: currentRecurringWork.value.interval_value,
+    started_at: currentRecurringWork.value.started_at ? currentRecurringWork.value.started_at.split('T')[0] : '',
+    deadline: currentRecurringWork.value.deadline ? currentRecurringWork.value.deadline.split('T')[0] : '',
+    end_at: currentRecurringWork.value.end_at ? currentRecurringWork.value.end_at.split('T')[0] : '',
+    is_active: currentRecurringWork.value.is_active
+  }
+}
+
+// 반복업무 저장
+const saveRecurringWork = async () => {
+  if (!editingRecurringWork.value.title?.trim()) {
+    alert('업무명을 입력해주세요.')
+    return
+  }
+  
+  try {
+    const updateData = {
+      title: editingRecurringWork.value.title,
+      content: editingRecurringWork.value.content || null,
+      category_id: editingRecurringWork.value.category_id,
+      myjob: editingRecurringWork.value.myjob,
+      recurrence_type: editingRecurringWork.value.recurrence_type,
+      interval_value: editingRecurringWork.value.interval_value,
+      started_at: editingRecurringWork.value.started_at ? new Date(editingRecurringWork.value.started_at + 'T00:00:00').toISOString() : null,
+      deadline: editingRecurringWork.value.deadline ? new Date(editingRecurringWork.value.deadline + 'T23:59:59').toISOString() : null,
+      end_at: editingRecurringWork.value.end_at ? new Date(editingRecurringWork.value.end_at + 'T23:59:59').toISOString() : null,
+      is_active: editingRecurringWork.value.is_active
+    }
+    
+    const response = await axios.put(`${import.meta.env.VITE_API_BASE_URL}/recurring-work/${currentRecurringWork.value.id}`, updateData, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    
+    // 저장 성공 시 상세 모드로 전환하고 데이터 업데이트
+    currentRecurringWork.value = response.data
+    isRecurringEditMode.value = false
+    
+    // 오늘의 업무 데이터 새로고침
+    await refreshTodayData()
+    
+  } catch (error) {
+    console.error('반복업무 수정 에러:', error)
+    alert('반복업무 수정 중 오류가 발생했습니다.')
+  }
 }
 
 // 오늘의 업무 데이터 새로고침 함수
@@ -2503,13 +2723,43 @@ const saveWork = async () => {
       
       if (currentWork.value.status === '완료') {
         // 완료 처리용 API 호출
-        console.log(`📡 모달에서 업무 완료 API 호출 - 업무 ID: ${currentWork.value.id}`)
-        
         response = await axios.put(`${import.meta.env.VITE_API_BASE_URL}/work/end/${currentWork.value.id}`, null, {
           headers: {
             'Content-Type': 'application/json'
           }
         })
+      } else if (currentWork.value.isRecurring) {
+        // 반복업무로 편집하는 경우 - POST /recurring-work/edit
+        const recurringEditData = {
+          work_id: currentWork.value.id,
+          title: currentWork.value.name,
+          content: currentWork.value.content || null,
+          category_id: categoryId,
+          myjob: currentWork.value.isMyWork,
+          current_status: currentWork.value.status,
+          recurrence_type: currentWork.value.recurrenceType,
+          interval_value: currentWork.value.intervalValue,
+          started_at: currentWork.value.startDate ? new Date(currentWork.value.startDate + 'T00:00:00').toISOString() : null,
+          deadline: currentWork.value.endDate ? new Date(currentWork.value.endDate + 'T23:59:59').toISOString() : null,
+          end_at: currentWork.value.endAt ? new Date(currentWork.value.endAt + 'T23:59:59').toISOString() : null
+        }
+        
+        response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/recurring-work/edit`, recurringEditData, {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        })
+        
+        const createdRecurringWork = response.data
+        
+        // 업무를 반복업무로 변경했으므로 해당 업무에 반복업무 속성 추가
+        const workToUpdate = todayWorks.value.find(w => w.id === currentWork.value.id)
+        if (workToUpdate) {
+          workToUpdate.recurrence_type = createdRecurringWork.recurrence_type
+          workToUpdate.interval_value = createdRecurringWork.interval_value
+          workToUpdate.is_active = createdRecurringWork.is_active
+          workToUpdate.recurring_work_id = createdRecurringWork.id
+        }
       } else {
         // 일반 수정 API 호출
         const updateData = {
@@ -2523,28 +2773,19 @@ const saveWork = async () => {
           myjob: currentWork.value.isMyWork
         }
         
-        console.log('📋 업무 수정 전송 데이터:', updateData)
-        console.log('📋 업무 수정 JSON 문자열:', JSON.stringify(updateData, null, 2))
-        
         response = await axios.put(`${import.meta.env.VITE_API_BASE_URL}/work/work/${currentWork.value.id}`, updateData, {
           headers: {
             'Content-Type': 'application/json'
           }
         })
-        
-        console.log('📡 업무 수정 응답 상태:', response.status)
       }
-      
-      console.log('✅ 업무 수정 성공')
       
       // 서버에서 최신 오늘의 업무 데이터를 다시 불러와서 동기화
       await refreshTodayData()
-      console.log('🔄 업무 수정 후 오늘의 업무 데이터 새로고침 완료')
       
       // 완료 처리 시 주간 데이터도 업데이트
       if (currentWork.value.status === '완료') {
         await updateWeeklyData()
-        console.log('🔄 모달에서 주간 완료 업무 데이터 업데이트됨')
       }
     } else {
       // 일반 업무 또는 반복 업무 생성 분기
@@ -5660,5 +5901,57 @@ const deleteProject = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* 반복업무 기존 안내 메시지 스타일 */
+.recurring-existing-notice {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.notice-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.notice-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.notice-text {
+  flex: 1;
+}
+
+.notice-title {
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 4px;
+}
+
+.notice-description {
+  font-size: 14px;
+  color: #6c757d;
+  line-height: 1.5;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  color: #007bff;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: inherit;
+  padding: 0;
+  margin: 0;
+}
+
+.link-button:hover {
+  color: #0056b3;
+  text-decoration: none;
 }
 </style>

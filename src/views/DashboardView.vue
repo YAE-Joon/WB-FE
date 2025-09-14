@@ -124,8 +124,8 @@
                         </div>
                       </div>
                     </div>
-                    <div class="table-cell" @click.stop>{{ formatDate(work.startDate) }}</div>
-                    <div class="table-cell" @click.stop>{{ formatDate(work.endDate) }}</div>
+                    <div class="table-cell" data-label="시작일:" @click.stop>{{ formatDate(work.startDate) }}</div>
+                    <div class="table-cell" data-label="마감일:" @click.stop>{{ formatDate(work.endDate) }}</div>
                     <div class="table-cell my-work-cell" @click.stop>
                       <input 
                         type="checkbox" 
@@ -199,8 +199,8 @@
                                 </div>
                               </div>
                             </div>
-                      <div class="table-cell" @click.stop>{{ formatDate(work.startDate) }}</div>
-                      <div class="table-cell" @click.stop>{{ formatDate(work.endDate) }}</div>
+                      <div class="table-cell" data-label="시작일:" @click.stop>{{ formatDate(work.startDate) }}</div>
+                      <div class="table-cell" data-label="마감일:" @click.stop>{{ formatDate(work.endDate) }}</div>
                       <div class="table-cell my-work-cell" @click.stop>
                         <input 
                           type="checkbox" 
@@ -292,8 +292,8 @@
                                 </div>
                               </div>
                             </div>
-                            <div class="table-cell" @click.stop>{{ formatDate(work.startDate) }}</div>
-                            <div class="table-cell" @click.stop>{{ formatDate(work.endDate) }}</div>
+                            <div class="table-cell" data-label="시작일:" @click.stop>{{ formatDate(work.startDate) }}</div>
+                            <div class="table-cell" data-label="마감일:" @click.stop>{{ formatDate(work.endDate) }}</div>
                             <div class="table-cell my-work-cell" @click.stop>
                               <input 
                                 type="checkbox" 
@@ -385,8 +385,8 @@
                                     </div>
                                   </div>
                                 </div>
-                                <div class="table-cell" @click.stop>{{ formatDate(work.startDate) }}</div>
-                                <div class="table-cell" @click.stop>{{ formatDate(work.endDate) }}</div>
+                                <div class="table-cell" data-label="시작일:" @click.stop>{{ formatDate(work.startDate) }}</div>
+                                <div class="table-cell" data-label="마감일:" @click.stop>{{ formatDate(work.endDate) }}</div>
                                 <div class="table-cell my-work-cell" @click.stop>
                                   <input 
                                     type="checkbox" 
@@ -493,6 +493,69 @@
             </div>
           </div>
         </div>
+        
+        <!-- 모바일용 주간 뷰 -->
+        <div class="mobile-weekly-view">
+          <div 
+            v-for="day in weekDays" 
+            :key="day.date"
+            class="mobile-day-card"
+          >
+            <div 
+              class="mobile-day-header"
+              :class="{ 'today': day.isToday }"
+            >
+              <div>{{ day.dayName }}</div>
+              <div>{{ day.date }}</div>
+            </div>
+            
+            <div 
+              v-for="category in topCategories" 
+              :key="category.id"
+              class="mobile-category-item"
+            >
+              <div 
+                class="mobile-category-name"
+                :style="{ borderLeftColor: getCategoryPastelColor(category.id) }"
+              >
+                {{ category.name }}
+              </div>
+              
+              <div class="mobile-work-tags">
+                <div 
+                  v-for="work in getCompletedWorksForCell(category.id, day.fullDate)"
+                  :key="work.id"
+                  class="completed-work-tag"
+                  :title="`${work.title}${work.content ? ' - ' + work.content : ''}`"
+                  @click.stop="viewCompletedWorkDetail(work)"
+                >
+                  <div class="work-tag-content">
+                    <span class="work-tag-indicator" :style="{ backgroundColor: getWorkTagColor(work) }"></span>
+                    <span class="work-tag-text">{{ truncateText(work.title, 15) }}</span>
+                  </div>
+                  <span class="work-tag-time">완료</span>
+                  <button 
+                    @click.stop="deleteWork(work)"
+                    class="tag-delete-btn"
+                    title="업무 삭제"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              
+              <!-- 업무 추가 버튼 -->
+              <button 
+                @click="addWorkToCell(category.id, day.date)"
+                class="mobile-add-work-btn"
+              >
+                + 업무 추가
+              </button>
+            </div>
+          </div>
+        </div>
       </section>
       </div>
 
@@ -502,7 +565,7 @@
           <div class="section-header">
             <h2>연간 계획</h2>
             <div class="header-controls">
-              <button @click="addProject" class="add-btn">+ 프로젝트 추가</button>
+              <button @click="addProject" class="add-btn project-add-btn">+ 추가</button>
               <div class="year-selector">
                 <button @click="changeYear(-1)" class="year-btn">◀</button>
                 <span class="current-year">{{ currentYear }}</span>
@@ -3649,16 +3712,17 @@ const deleteProject = async () => {
   display: flex;
   align-items: center;
   gap: 1rem;
+  font-size: 0.85rem;
 }
 
 .logout-btn {
   background: #ff6b6b;
   color: white;
   border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   transition: background 0.2s;
 }
 
@@ -4239,6 +4303,12 @@ const deleteProject = async () => {
   transform: translateY(-1px);
 }
 
+.project-add-btn {
+  padding: 0.3rem 0.6rem !important;
+  font-size: 0.8rem !important;
+  border-radius: 4px !important;
+}
+
 /* 오늘의 업무 섹션 */
 .today-work-section {
   background: white;
@@ -4469,6 +4539,23 @@ const deleteProject = async () => {
 
 .table-row.recurring-work:hover::after {
   opacity: 1;
+}
+
+/* iPhone 16 Dynamic Island 및 Safe Area 대응 */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .dashboard-main {
+    padding-top: max(1rem, env(safe-area-inset-top));
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+
+  @media (max-width: 640px) {
+    .modal-content {
+      margin-top: max(10px, env(safe-area-inset-top));
+      margin-bottom: max(10px, env(safe-area-inset-bottom));
+    }
+  }
 }
 
 /* 마감일 책갈피 스타일 */
@@ -5867,8 +5954,10 @@ const deleteProject = async () => {
 /* 반응형 */
 @media (max-width: 640px) {
   .modal-content {
-    width: 95%;
+    width: calc(100vw - 20px);
+    max-width: none;
     margin: 10px;
+    overflow-x: hidden;
   }
 
   .modal-header {
@@ -5876,7 +5965,9 @@ const deleteProject = async () => {
   }
 
   .modal-body {
-    padding: 24px;
+    padding: 20px;
+    overflow-x: hidden;
+    word-wrap: break-word;
   }
 
   .modal-footer {
@@ -5885,6 +5976,18 @@ const deleteProject = async () => {
     gap: 16px;
   }
 
+  /* 모달 내 입력 필드 조정 */
+  .modal-content input,
+  .modal-content textarea,
+  .modal-content select {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .form-group {
+    overflow-x: hidden;
+  }
+  
   .button-group {
     width: 100%;
     flex-direction: column;
@@ -5916,6 +6019,119 @@ const deleteProject = async () => {
     width: 100%;
     justify-content: flex-start;
   }
+
+  /* 모바일용 책갈피 최적화 */
+  .table-row.recurring-work::before,
+  .table-row.deadline-bookmark.due-soon::before,
+  .table-row.deadline-bookmark.due-today-bookmark::before,
+  .table-row.deadline-bookmark.overdue-bookmark::before {
+    width: 6px; /* 모바일에서 더 넓게 */
+    border-radius: 0 6px 6px 0; /* 더 둥근 모서리 */
+  }
+
+  .table-row.recurring-work:hover::before,
+  .table-row.deadline-bookmark.due-soon:hover::before,
+  .table-row.deadline-bookmark.due-today-bookmark:hover::before,
+  .table-row.deadline-bookmark.overdue-bookmark:hover::before {
+    width: 90px; /* 호버 시 적당한 크기 */
+    border-radius: 0 12px 12px 0;
+  }
+
+  /* 터치 인터랙션 최적화 */
+  .table-row.recurring-work:active::before,
+  .table-row.deadline-bookmark.due-soon:active::before,
+  .table-row.deadline-bookmark.due-today-bookmark:active::before,
+  .table-row.deadline-bookmark.overdue-bookmark:active::before {
+    width: 90px;
+    border-radius: 0 12px 12px 0;
+  }
+
+  .table-row.recurring-work::after,
+  .table-row.deadline-bookmark.due-soon::after,
+  .table-row.deadline-bookmark.due-today-bookmark::after,
+  .table-row.deadline-bookmark.overdue-bookmark::after {
+    left: 12px;
+    font-size: 11px; /* 모바일에서 적당한 폰트 크기 */
+    font-weight: 600; /* 더 굵게 */
+  }
+
+  .table-row.recurring-work:active::after,
+  .table-row.deadline-bookmark.due-soon:active::after,
+  .table-row.deadline-bookmark.due-today-bookmark:active::after,
+  .table-row.deadline-bookmark.overdue-bookmark:active::after {
+    opacity: 1;
+  }
+
+  /* 테이블 행 터치 영역 확보 */
+  .table-row {
+    min-height: 50px; /* 터치하기 쉬운 최소 높이 */
+  }
+
+  .table-cell {
+    padding: 12px 8px; /* 더 넉넉한 패딩 */
+  }
+
+  /* 업무명 셀 최적화 */
+  .work-name-cell {
+    font-size: 15px; /* 모바일에서 읽기 좋은 크기 */
+    line-height: 1.4;
+  }
+
+  /* 상태 배지 최적화 */
+  .status-badge {
+    font-size: 11px !important;
+    padding: 4px 8px !important;
+    min-width: 50px !important;
+    max-width: 80px !important;
+    border-radius: 12px !important;
+    height: auto !important;
+    line-height: 1.2 !important;
+    white-space: nowrap !important;
+    display: inline-block !important;
+    text-align: center !important;
+  }
+  
+  /* 모바일에서 드롭다운 위치 조정 */
+  .status-dropdown-wrapper {
+    position: relative;
+  }
+  
+  .status-dropdown {
+    position: absolute !important;
+    top: 100%;
+    right: 0;
+    left: auto;
+    transform: none !important;
+    z-index: 1000;
+  }
+
+  /* 삭제 버튼 최적화 */
+  .table-row .delete-btn {
+    width: 24px !important;
+    height: 24px !important;
+    position: absolute !important;
+    top: 8px !important;
+    right: 8px !important;
+    left: auto !important;
+    transform: none !important;
+    display: flex !important;
+    border-radius: 50% !important;
+    font-size: 12px !important;
+    z-index: 20 !important;
+    background: transparent !important;
+    color: #999 !important;
+    box-shadow: none !important;
+  }
+  
+  .table-row .delete-btn:hover {
+    background: rgba(255, 107, 122, 0.1) !important;
+    color: #ff4757 !important;
+    transform: none !important;
+  }
+  
+  .table-row .my-work-cell {
+    position: static !important;
+  }
 }
 
 /* 제목 컨테이너 스타일 */
@@ -5935,35 +6151,307 @@ const deleteProject = async () => {
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
 }
 
+.motto :deep(.emoji-text) {
+  font-style: normal;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  transform: none;
+}
 
-/* 기존 반응형 스타일 */
+
+/* iPhone 16 및 모바일 Safari 최적화 */
 @media (max-width: 768px) {
   .dashboard-main {
     padding: 1rem;
+    -webkit-overflow-scrolling: touch; /* iOS 부드러운 스크롤 */
   }
   
-  .table-header,
-  .table-row,
+  /* 헤더 타이틀 모바일 최적화 */
+  .title-container {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+  
+  .title-container h1 {
+    margin-bottom: 0 !important;
+    font-size: 1.8rem !important;
+  }
+  
+  .motto {
+    font-size: 0.9rem !important;
+    transform: none !important;
+    color: #666 !important;
+  }
+  
+  .motto :deep(.emoji-text) {
+    font-style: normal !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  }
+  
+  /* 모바일에서 헤더 텍스트 크기 조정 */
+  .user-info {
+    font-size: 0.75rem !important;
+    gap: 0.5rem !important;
+  }
+  
+  .logout-btn {
+    padding: 0.3rem 0.6rem !important;
+    font-size: 0.7rem !important;
+  }
+  
   .category-row {
-    grid-template-columns: 1fr;
+    padding: 4px 12px !important;
+    line-height: 1.1 !important;
+    margin-bottom: 6px !important;
   }
   
+  /* 모바일에서 섹션 헤더 최적화 */
+  .section-header {
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+  }
+  
+  .section-header h2 {
+    font-size: 1.1rem !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+  
+  .header-controls {
+    flex-shrink: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+  }
+  
+  /* 프로젝트 타임라인 가로 스크롤 */
+  .project-timeline {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .timeline-header,
+  .project-row {
+    min-width: 1200px !important;
+    grid-template-columns: 300px 500px 400px !important;
+  }
+  
+  /* 테이블 헤더 숨기기 */
+  .table-header {
+    display: none;
+  }
+  
+  /* 업무 행을 카드 형태로 변경 */
+  .table-row {
+    display: block;
+    background: white;
+    border: 1px solid #e1e5e9;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    padding: 16px;
+    padding-top: 40px; /* 삭제 버튼 공간 확보 */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    transition: all 0.2s ease;
+    position: relative;
+  }
+  
+  .table-row:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+  }
+  
+  /* 카테고리 행도 카드 형태로 */
+  .category-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f8f9fa;
+    border: 1px solid #e1e5e9;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    padding: 6px 12px;
+    font-weight: 600;
+    line-height: 1.2;
+    text-align: center;
+  }
+  
+  /* 테이블 셀을 블록 형태로 변경 */
   .table-cell {
-    border-right: none;
-    border-bottom: 1px solid #e1e5e9;
-    justify-content: flex-start;
-    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: none;
+    padding: 8px 0;
+    min-height: auto;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
   }
   
-  .weekly-header,
+  /* 각 셀에 라벨 추가 */
+  .table-cell:not(.work-name-cell):not(.work-category):not(.status-cell):not(.my-work-cell)::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #666;
+    margin-right: 8px;
+    flex-shrink: 0;
+  }
+  
+  .work-category::before {
+    content: "프로젝트: ";
+    font-weight: 600;
+    color: #666;
+    margin-right: 8px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  
+  .work-name-cell {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    border-bottom: 1px solid #f0f0f0;
+    padding-bottom: 12px;
+    margin-bottom: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+  }
+  
+  .status-cell {
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .status-cell::before {
+    content: "상태: ";
+    font-weight: 600;
+    color: #666;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  
+  .my-work-cell::before {
+    content: "내담당: ";
+    font-weight: 600;
+    color: #666;
+    margin-right: 8px;
+  }
+  
+  /* 주간 업무 테이블을 날짜별 카드로 재구성 */
+  .weekly-table {
+    display: block;
+  }
+  
+  .weekly-header {
+    display: none;
+  }
+  
   .weekly-row {
-    grid-template-columns: 1fr;
+    display: none; /* 기존 행 숨기기 */
   }
   
-  .day-column,
-  .work-cell {
-    border-right: none;
-    border-bottom: 1px solid #e1e5e9;
+  /* 날짜별 카드 새로 생성 */
+  .weekly-table::after {
+    content: '';
+    display: block;
+  }
+  
+  /* 모바일용 주간 뷰 스타일 추가 */
+  .mobile-weekly-view {
+    display: block;
+  }
+  
+  .mobile-day-card {
+    background: white;
+    border: 1px solid #e1e5e9;
+    border-radius: 12px;
+    margin-bottom: 16px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+  
+  .mobile-day-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 16px;
+    text-align: center;
+    font-weight: 600;
+  }
+  
+  .mobile-day-header.today {
+    background: linear-gradient(135deg, #ff6b7a 0%, #ee5a52 100%);
+  }
+  
+  .mobile-category-item {
+    padding: 16px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  
+  .mobile-category-item:last-child {
+    border-bottom: none;
+  }
+  
+  .mobile-category-name {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+    padding-left: 12px;
+    border-left: 4px solid #667eea;
+  }
+  
+  .mobile-work-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  
+  .mobile-add-work-btn {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    margin-top: 12px;
+    transition: all 0.2s ease;
+  }
+  
+  .mobile-add-work-btn:hover,
+  .mobile-add-work-btn:active {
+    background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+    transform: translateY(-1px);
+  }
+
+  /* 책갈피 터치 최적화 */
+  .table-row.recurring-work::before,
+  .table-row.deadline-bookmark.due-soon::before,
+  .table-row.deadline-bookmark.due-today-bookmark::before,
+  .table-row.deadline-bookmark.overdue-bookmark::before {
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent; /* iOS 기본 탭 하이라이트 제거 */
+  }
+
+  /* 모바일에서 애니메이션 성능 최적화 */
+  .table-row.recurring-work::before,
+  .table-row.recurring-work::after,
+  .table-row.deadline-bookmark.due-soon::before,
+  .table-row.deadline-bookmark.due-soon::after,
+  .table-row.deadline-bookmark.due-today-bookmark::before,
+  .table-row.deadline-bookmark.due-today-bookmark::after,
+  .table-row.deadline-bookmark.overdue-bookmark::before,
+  .table-row.deadline-bookmark.overdue-bookmark::after {
+    will-change: width, opacity; /* GPU 가속 */
+    transform: translateZ(0); /* 하드웨어 가속 활성화 */
+  }
+
+  /* 스크롤 성능 최적화 */
+  .today-table,
+  .weekly-table {
+    -webkit-overflow-scrolling: touch;
+    transform: translateZ(0); /* 하드웨어 가속 */
   }
 }
 
@@ -6102,5 +6590,59 @@ const deleteProject = async () => {
 .link-button:hover {
   color: #0056b3;
   text-decoration: none;
+}
+
+/* 데스크톱에서는 모바일 뷰 숨기기 */
+.mobile-weekly-view {
+  display: none;
+}
+
+/* 768px 초과에서는 모바일 뷰를 숨김 */
+@media (min-width: 769px) {
+  .mobile-weekly-view {
+    display: none !important;
+  }
+}
+
+/* 400px 이하 소형 모바일 최적화 */
+@media (max-width: 400px) {
+  .dashboard-main {
+    padding: 0.75rem;
+  }
+  
+  .table-row {
+    margin-bottom: 8px;
+    padding: 12px;
+    padding-top: 36px;
+  }
+  
+  .table-cell {
+    padding: 6px 0;
+    font-size: 14px;
+  }
+  
+  .work-name-cell {
+    font-size: 15px;
+    max-width: 150px !important;
+  }
+  
+  .status-badge {
+    font-size: 10px !important;
+    padding: 3px 6px !important;
+    min-width: 45px !important;
+    max-width: 65px !important;
+  }
+  
+  .mobile-day-card {
+    margin-bottom: 12px;
+  }
+  
+  .mobile-day-header {
+    padding: 12px;
+  }
+  
+  .mobile-category-item {
+    padding: 12px;
+  }
 }
 </style>
